@@ -1,21 +1,21 @@
-import React from 'react';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+// React import removed to fix unused warning
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   LineChart,
   Line
 } from 'recharts';
-import { 
-  Sprout, 
-  Tractor, 
-  Droplets, 
-  ThermometerSun, 
-  Map, 
+import {
+  Sprout,
+  Tractor,
+  Droplets,
+  ThermometerSun,
+  Map,
   Leaf,
   Bell,
   Search,
@@ -60,7 +60,7 @@ const StatCard = ({ title, value, icon: Icon, trend }: { title: string, value: s
 export default function Dashboard() {
   return (
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
-      
+
       {/* Sidebar */}
       <aside className="w-64 border-r border-border bg-card flex flex-col">
         <div className="p-6 flex items-center gap-3 border-b border-border">
@@ -77,14 +77,13 @@ export default function Dashboard() {
             { name: 'Clima', icon: ThermometerSun },
             { name: 'Riego', icon: Droplets },
           ].map((item) => (
-            <a 
-              key={item.name} 
-              href="#" 
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                item.active 
-                  ? 'bg-primary/10 text-primary' 
+            <a
+              key={item.name}
+              href="#"
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${item.active
+                  ? 'bg-primary/10 text-primary'
                   : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              }`}
+                }`}
             >
               <item.icon size={20} />
               {item.name}
@@ -95,14 +94,14 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
-        
+
         {/* Header */}
         <header className="h-16 border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10 flex items-center justify-between px-8">
           <div className="relative w-96">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
-            <input 
-              type="text" 
-              placeholder="Buscar parcelas, cultivos, organizaciones..." 
+            <input
+              type="text"
+              placeholder="Buscar parcelas, cultivos, organizaciones..."
               className="w-full pl-10 pr-4 py-2 bg-muted/50 border border-border rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
             />
           </div>
@@ -119,7 +118,7 @@ export default function Dashboard() {
 
         {/* Dashboard Content */}
         <div className="p-8 space-y-8 max-w-7xl mx-auto">
-          
+
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Vista General</h1>
@@ -141,7 +140,7 @@ export default function Dashboard() {
 
           {/* Charts Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            
+
             {/* Chart 1 */}
             <div className="bg-card border border-border rounded-xl shadow-sm p-6 line-chart-container">
               <div className="mb-4">
@@ -152,13 +151,13 @@ export default function Dashboard() {
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={yieldData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: 'hsl(var(--muted-foreground))', fontSize: 12}} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{fill: 'hsl(var(--muted-foreground))', fontSize: 12}} />
-                    <Tooltip 
+                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+                    <Tooltip
                       contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '8px', border: '1px solid hsl(var(--border))', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                     />
                     <Line type="monotone" dataKey="y2025" stroke="hsl(var(--muted-foreground))" strokeWidth={2} dot={false} strokeDasharray="4 4" />
-                    <Line type="monotone" dataKey="y2026" stroke="hsl(var(--primary))" strokeWidth={3} dot={{r: 4, fill: "hsl(var(--primary))", strokeWidth: 2, stroke: "hsl(var(--card))"}} activeDot={{r: 6}} />
+                    <Line type="monotone" dataKey="y2026" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 4, fill: "hsl(var(--primary))", strokeWidth: 2, stroke: "hsl(var(--card))" }} activeDot={{ r: 6 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -174,10 +173,10 @@ export default function Dashboard() {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={phenologyData} layout="vertical" margin={{ top: 0, right: 0, left: 40, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
-                    <XAxis type="number" axisLine={false} tickLine={false} tick={{fill: 'hsl(var(--muted-foreground))', fontSize: 12}} />
-                    <YAxis dataKey="stage" type="category" axisLine={false} tickLine={false} tick={{fill: 'hsl(var(--foreground))', fontSize: 12, fontWeight: 500}} />
-                    <Tooltip 
-                      cursor={{fill: 'hsl(var(--muted)/0.5)'}}
+                    <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+                    <YAxis dataKey="stage" type="category" axisLine={false} tickLine={false} tick={{ fill: 'hsl(var(--foreground))', fontSize: 12, fontWeight: 500 }} />
+                    <Tooltip
+                      cursor={{ fill: 'hsl(var(--muted)/0.5)' }}
                       contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '8px', border: '1px solid hsl(var(--border))', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                     />
                     <Bar dataKey="crops" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} barSize={24} />
