@@ -5,6 +5,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import Dashboard from './Dashboard';
+import PropertiesPage from './pages/PropertiesPage';
+import PropertyDetailPage from './pages/PropertyDetailPage';
 
 const App: React.FC = () => {
   return (
@@ -16,6 +18,8 @@ const App: React.FC = () => {
 
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/properties" element={<PropertiesPage />} />
+            <Route path="/properties/:id" element={<PropertyDetailPage />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </Route>
 
