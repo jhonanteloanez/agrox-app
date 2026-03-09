@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # AgroX Application Source
 
 This application has been manually scaffolded because `Node.js / npm` was not detected on this system.
@@ -40,3 +41,6 @@ This application has been manually scaffolded because `Node.js / npm` was not de
 ## Notes
 - The models in `backend/prisma/schema.prisma` strictly match your SQL schema names and enums.
 - The `user_roles` check configures RLS per transaction by pushing the JWT claims to `request.jwt.claims`.
+=======
+# agrox-app
+>>>>>>> d77d8e26bf1068fa8f291e9dcddcd0f30adee34b
