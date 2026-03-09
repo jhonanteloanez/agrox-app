@@ -1,0 +1,617 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["custom_auth", "public"]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model users {
+  id                                       String                      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  first_name                               String
+  last_name                                String
+  email                                    String                      @unique
+  password                                 String
+  phone                                    String?
+  role                                     String?
+  created_at                               DateTime?                   @default(now()) @db.Timestamp(6)
+  status                                   user_status                 @default(PENDING_ACTIVATION)
+  username                                 String                      @unique(map: "users_username_unique") @db.VarChar(20)
+  middle_name                              String?
+  last_name2                               String?
+  birth_date                               DateTime?                   @db.Date
+  birth_city                               String?
+  address                                  String?
+  profile_photo_url                        String?
+  email_verified                           Boolean?                    @default(false)
+  updated_at                               DateTime?                   @default(now()) @db.Timestamptz(6)
+  audit_event                              audit_event[]
+  audit_user_roles                         audit_user_roles[]
+  auth_audit                               auth_audit[]
+  email_verification_tokens                email_verification_tokens[]
+  org_invite_org_invite_accepted_byTousers org_invite[]                @relation("org_invite_accepted_byTousers")
+  org_invite_org_invite_invited_byTousers  org_invite[]                @relation("org_invite_invited_byTousers")
+  org_user_role                            org_user_role[]
+  password_recovery_tokens                 password_recovery_tokens[]
+  payment                                  payment[]
+  seat_assignment                          seat_assignment[]
+  user_consent                             user_consent[]
+  user_roles                               user_roles[]
+
+  @@schema("custom_auth")
+}
+
+model audit_event {
+  audit_id        String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String?       @db.Uuid
+  user_id         String?       @db.Uuid
+  entity          String        @db.VarChar(80)
+  entity_id       String?       @db.VarChar(80)
+  action          audit_action
+  payload_hash    String?       @db.VarChar(128)
+  ip              String?       @db.Inet
+  ts              DateTime      @default(now()) @db.Timestamptz(6)
+  organization    organization? @relation(fields: [organization_id], references: [organization_id], onDelete: Cascade, onUpdate: NoAction)
+  users           users?        @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "audit_event_user_id_fkey1")
+
+  @@index([organization_id, ts(sort: Desc)], map: "idx_audit_org_ts")
+  @@schema("public")
+}
+
+model audit_user_roles {
+  audit_id   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String?   @db.Uuid
+  old_role   String?
+  new_role   String?
+  action     String?
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  users      users?    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model auth_audit {
+  audit_id   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String?   @db.Uuid
+  action     String
+  details    Json?
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  users      users?    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model crop {
+  crop_id                Int                  @id @default(autoincrement())
+  plot_id                String?              @db.Uuid
+  product_id             Int?
+  planting_date          DateTime             @db.Date
+  estimated_harvest_date DateTime             @db.Date
+  actual_harvest_date    DateTime?            @db.Date
+  status                 String?              @db.VarChar(50)
+  growth_stage           phenological_stages?
+  area_planted           Decimal              @db.Decimal
+  plot                   plot?                @relation(fields: [plot_id], references: [plot_id], onDelete: Cascade, onUpdate: NoAction)
+  product                product?             @relation(fields: [product_id], references: [product_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model email_verification_tokens {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String    @db.Uuid
+  token      String    @unique
+  expires_at DateTime  @default(dbgenerated("(now() + '24:00:00'::interval)")) @db.Timestamptz(6)
+  used_at    DateTime? @db.Timestamptz(6)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  users      users     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model org_invite {
+  invite_id                           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id                     String        @db.Uuid
+  email                               String        @db.VarChar(180)
+  role                                org_role
+  token                               String        @unique @db.VarChar(120)
+  status                              invite_status @default(PENDING)
+  expires_at                          DateTime      @db.Timestamptz(6)
+  invited_by                          String        @db.Uuid
+  accepted_by                         String?       @db.Uuid
+  created_at                          DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at                          DateTime      @default(now()) @db.Timestamptz(6)
+  sent_at                             DateTime?     @default(now()) @db.Timestamp(6)
+  organization                        organization  @relation(fields: [organization_id], references: [organization_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_org_id")
+  users_org_invite_accepted_byTousers users?        @relation("org_invite_accepted_byTousers", fields: [accepted_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "org_invite_accepted_by_fkey1")
+  users_org_invite_invited_byTousers  users         @relation("org_invite_invited_byTousers", fields: [invited_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "org_invite_invited_by_fkey1")
+
+  @@index([organization_id, status], map: "idx_invite_org_status")
+  @@schema("public")
+}
+
+model org_user_role {
+  org_user_role_id String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id  String       @db.Uuid
+  user_id          String       @db.Uuid
+  role             org_role
+  created_at       DateTime     @default(now()) @db.Timestamptz(6)
+  organization     organization @relation(fields: [organization_id], references: [organization_id], onDelete: Cascade, onUpdate: NoAction)
+  users            users        @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "org_user_role_user_id_fkey1")
+
+  @@unique([organization_id, user_id])
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model organization {
+  organization_id String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String          @unique(map: "uk_org_name") @db.VarChar(120)
+  type            String          @db.VarChar(16)
+  status          status_basic    @default(ACTIVE)
+  created_at      DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime        @default(now()) @db.Timestamptz(6)
+  audit_event     audit_event[]
+  org_invite      org_invite[]
+  org_user_role   org_user_role[]
+  payment         payment[]
+  property        property[]
+  subscription    subscription[]
+  user_roles      user_roles[]
+
+  @@schema("public")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model organization_backup {
+  organization_id String?       @db.Uuid
+  name            String?       @db.VarChar(120)
+  type            String?       @db.VarChar(16)
+  status          status_basic?
+  created_at      DateTime?     @db.Timestamptz(6)
+  updated_at      DateTime?     @db.Timestamptz(6)
+
+  @@ignore
+  @@schema("public")
+}
+
+model password_recovery_tokens {
+  token_id   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String?   @db.Uuid
+  token      String    @unique
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  expires_at DateTime  @db.Timestamptz(6)
+  used       Boolean?  @default(false)
+  users      users?    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model payment {
+  payment_id        String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id           String         @db.Uuid
+  subscription_id   String?        @db.Uuid
+  organization_id   String?        @db.Uuid
+  plan_code         String         @db.VarChar(10)
+  amount            Decimal        @db.Decimal(10, 2)
+  currency          String         @default("BOB") @db.VarChar(3)
+  status            payment_status @default(PENDING)
+  gateway_reference String?        @db.VarChar
+  gateway_name      String?        @db.VarChar
+  created_at        DateTime       @default(now()) @db.Timestamptz(6)
+  confirmed_at      DateTime?      @db.Timestamptz(6)
+  updated_at        DateTime       @default(now()) @db.Timestamptz(6)
+  ip                String?        @db.Inet
+  payload_hash      String?        @db.VarChar
+  organization      organization?  @relation(fields: [organization_id], references: [organization_id])
+  subscription      subscription?  @relation(fields: [subscription_id], references: [subscription_id])
+  users             users          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model phenological_stage_progress {
+  stage_id     BigInt             @id(map: "phenological_stage_progress_pkey1") @default(autoincrement())
+  crop_id      BigInt
+  stage        phenological_stage
+  start_date   DateTime           @db.Date
+  end_date     DateTime?          @db.Date
+  observations String?
+  created_at   DateTime           @default(now()) @db.Timestamptz(6)
+  created_by   String?            @db.Uuid
+  updated_at   DateTime?          @db.Timestamptz(6)
+  updated_by   String?            @db.Uuid
+  deleted_at   DateTime?          @db.Timestamptz(6)
+  deleted_by   String?            @db.Uuid
+
+  @@index([crop_id], map: "idx_phenological_crop_id")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model plot {
+  plot_id     String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  property_id String                    @db.Uuid
+  name        String
+  area_m2     Decimal                   @db.Decimal
+  location    Unsupported("geography")?
+  status      status_basic?
+  description String?
+  created_at  DateTime?                 @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime?                 @default(now()) @db.Timestamptz(6)
+  deleted_at  DateTime?                 @db.Timestamptz(6)
+  crop        crop[]
+  property    property                  @relation(fields: [property_id], references: [property_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([property_id], map: "idx_plot_property_id")
+  @@schema("public")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model plot_backup {
+  plot_id     String?                  @db.Uuid
+  property_id String?                  @db.Uuid
+  name        String?
+  area_m2     Decimal?                 @db.Decimal
+  location    Unsupported("geometry")?
+  status      status_basic?
+  description String?
+  created_at  DateTime?                @db.Timestamptz(6)
+  updated_at  DateTime?                @db.Timestamptz(6)
+  deleted_at  DateTime?                @db.Timestamptz(6)
+
+  @@ignore
+  @@schema("public")
+}
+
+model product {
+  product_id              Int                       @id @default(autoincrement())
+  name                    String                    @db.VarChar(255)
+  scientific_name         String?                   @db.VarChar(255)
+  category                product_categories
+  description             String?
+  ideal_climate           String?
+  ideal_soil_type         String?
+  planting_season         String?                   @db.VarChar(255)
+  harvest_time            Int?
+  notes                   String?
+  crop                    crop[]
+  product_phenology_stage product_phenology_stage[]
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model product_phenology_stage {
+  product_id              Int
+  stage                   phenological_stage
+  stage_order             Int
+  estimated_duration_days Int?
+  product                 product            @relation(fields: [product_id], references: [product_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([product_id, stage])
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model property {
+  property_id       String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id   String                    @db.Uuid
+  name              String                    @db.VarChar(120)
+  alias             String?                   @db.VarChar(60)
+  geo_area          Unsupported("geography")?
+  centroid_lat      Decimal?                  @db.Decimal(9, 6)
+  centroid_lon      Decimal?                  @db.Decimal(9, 6)
+  area_m2           Decimal                   @db.Decimal(14, 2)
+  elevation_m       Decimal?                  @db.Decimal(7, 2)
+  address           String?                   @db.VarChar(180)
+  climate_radius_km Decimal                   @default(10.00) @db.Decimal(5, 2)
+  status            status_basic              @default(ACTIVE)
+  created_at        DateTime                  @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime                  @default(now()) @db.Timestamptz(6)
+  deleted_at        DateTime?                 @db.Timestamptz(6)
+  department        String?
+  municipality      String?
+  community         String?
+  plot              plot[]
+  organization      organization              @relation(fields: [organization_id], references: [organization_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([organization_id, name], map: "uk_property_name_per_org")
+  @@index([geo_area], map: "idx_property_geo", type: Gist)
+  @@index([organization_id], map: "idx_property_org")
+  @@index([status], map: "idx_property_status")
+  @@schema("public")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model property_backup {
+  property_id       String?                  @db.Uuid
+  organization_id   String?                  @db.Uuid
+  name              String?                  @db.VarChar(120)
+  alias             String?                  @db.VarChar(60)
+  geo_area          Unsupported("geometry")?
+  centroid_lat      Decimal?                 @db.Decimal(9, 6)
+  centroid_lon      Decimal?                 @db.Decimal(9, 6)
+  area_m2           Decimal?                 @db.Decimal(14, 2)
+  elevation_m       Decimal?                 @db.Decimal(7, 2)
+  address           String?                  @db.VarChar(180)
+  climate_radius_km Decimal?                 @db.Decimal(5, 2)
+  status            status_basic?
+  created_at        DateTime?                @db.Timestamptz(6)
+  updated_at        DateTime?                @db.Timestamptz(6)
+  deleted_at        DateTime?                @db.Timestamptz(6)
+
+  @@ignore
+  @@schema("public")
+}
+
+model seat_assignment {
+  seat_id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  subscription_id String       @db.Uuid
+  user_id         String?      @db.Uuid
+  status          seat_status  @default(FREE)
+  held_until      DateTime?    @db.Timestamptz(6)
+  created_at      DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime     @default(now()) @db.Timestamptz(6)
+  subscription    subscription @relation(fields: [subscription_id], references: [subscription_id], onDelete: Cascade, onUpdate: NoAction)
+  users           users?       @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "seat_assignment_user_id_fkey1")
+
+  @@unique([subscription_id, user_id], map: "uk_seat_per_user")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model spatial_ref_sys {
+  srid      Int     @id
+  auth_name String? @db.VarChar(256)
+  auth_srid Int?
+  srtext    String? @db.VarChar(2048)
+  proj4text String? @db.VarChar(2048)
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model subscription {
+  subscription_id        String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id        String              @db.Uuid
+  plan_code              String              @db.VarChar(10)
+  seat_limit             Int
+  billing_mode           billing_mode        @default(MANUAL)
+  status                 subscription_status @default(ACTIVE)
+  start_date             DateTime            @default(dbgenerated("CURRENT_DATE")) @db.Date
+  end_date               DateTime?           @db.Date
+  next_billing           DateTime?           @db.Date
+  billing_adjust_pending Boolean             @default(false)
+  created_at             DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime            @default(now()) @db.Timestamptz(6)
+  payment                payment[]
+  seat_assignment        seat_assignment[]
+  organization           organization        @relation(fields: [organization_id], references: [organization_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([organization_id, status])
+  @@schema("public")
+}
+
+model user_auth {
+  user_id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email           String    @unique
+  hashed_password String
+  failed_attempts Int?      @default(0)
+  account_locked  Boolean?  @default(false)
+  lock_until      DateTime? @db.Timestamptz(6)
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@schema("public")
+}
+
+model user_consent {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      String   @db.Uuid
+  consent_type String
+  accepted     Boolean
+  version      String
+  ip_address   String?
+  accepted_at  DateTime @default(now()) @db.Timestamptz(6)
+  users        users    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model user_roles {
+  role_id         String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id         String?       @db.Uuid
+  organization_id String?       @db.Uuid
+  role            String
+  created_at      DateTime?     @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime?     @default(now()) @db.Timestamptz(6)
+  organization    organization? @relation(fields: [organization_id], references: [organization_id], onDelete: NoAction, onUpdate: NoAction)
+  users           users?        @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([user_id, organization_id], map: "user_roles_unique")
+  @@schema("public")
+}
+
+enum audit_action {
+  CREATE
+  UPDATE
+  DELETE
+  INVITE_SENT
+  INVITE_ACCEPTED
+  ROLE_CHANGED
+  MEMBER_REMOVED
+  ACCESS_DENIED
+  LOGIN
+  LOGOUT
+  USER_REGISTER_INIT
+  USER_ACTIVATED_AFTER_PAYMENT
+
+  @@schema("public")
+}
+
+enum billing_mode {
+  MANUAL
+  LOCAL_GATEWAY
+  CARD
+
+  @@schema("public")
+}
+
+enum cycle_status {
+  PLANNED
+  ACTIVE
+  CLOSED
+  CANCELLED
+
+  @@schema("public")
+}
+
+enum invite_status {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+
+  @@schema("public")
+}
+
+enum irrigation_type {
+  NONE
+  DRIP
+  SPRINKLER
+  FLOOD
+  OTHER
+
+  @@schema("public")
+}
+
+enum org_role {
+  OWNER
+  ADMIN
+  GESTOR
+  OPERADOR
+  SOLO_LECTURA
+
+  @@schema("public")
+}
+
+enum payment_status {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+
+  @@schema("public")
+}
+
+enum phenological_stage {
+  siembra
+  germinacion
+  crecimiento_vegetativo
+  floracion
+  fructificacion
+  maduracion
+  cosecha
+
+  @@schema("public")
+}
+
+/// This enum is commented in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+enum phenological_stages {
+  GERMINACION
+  EMERGENCIA
+  DESARROLLO_VEGETATIVO
+  FLORACION
+  FRUCTIFICACION
+  LLENADO_FRUTO
+  MADURACION
+  COSECHA
+  POSCOSECHA
+  LATENCIA
+
+  @@schema("public")
+}
+
+enum plot_status {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+
+  @@schema("public")
+}
+
+enum product_categories {
+  Granos
+  Frutales
+  Verduras
+  Legumbres
+  Otros
+
+  @@schema("public")
+}
+
+enum seat_status {
+  FREE
+  HELD
+  ASSIGNED
+  RELEASED
+
+  @@schema("public")
+}
+
+enum status_basic {
+  ACTIVE
+  INACTIVE
+
+  @@schema("public")
+}
+
+enum subscription_status {
+  ACTIVE
+  PAST_DUE
+  GRACE
+  ENDED
+
+  @@schema("public")
+}
+
+enum user_role {
+  COOPERATIVA
+  PRODUCTOR
+  OPERADOR
+  ADMINISTRADOR
+  SOLO_LECTURA
+
+  @@schema("public")
+}
+
+enum user_status {
+  PENDING_ACTIVATION
+  PAYMENT_PENDING
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+
+  @@schema("public")
+}
+
+enum yield_unit {
+  KG
+  TON
+  BOX
+  UNIT
+
+  @@schema("public")
+}
