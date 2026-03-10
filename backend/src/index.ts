@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import { prisma } from './prisma';
+import cropsRouter from './routes/crops';
 
 const app = express();
 app.use(cors());
@@ -12,7 +13,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'agrox-dev-secret';
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /** Returns the organization_id for the given user, or throws if none found. */
-async function getOrgIdForUser(userId: string): Promise<string> {
+export async function getOrgIdForUser(userId: string): Promise<string> {
   const rows = await prisma.$queryRawUnsafe<any[]>(
     `SELECT organization_id FROM public.org_user_role WHERE user_id = $1::uuid LIMIT 1`,
     userId
@@ -22,7 +23,7 @@ async function getOrgIdForUser(userId: string): Promise<string> {
 }
 
 /** Calls fn_log_audit_event (fire-and-forget, errors are swallowed by the DB function). */
-async function logAudit(
+export async function logAudit(
   entity: string,
   entityId: string,
   action: string,
@@ -478,7 +479,7 @@ app.get('/api/properties/:propertyId/lots', authMiddleware, async (req, res) => 
        ORDER BY created_at DESC`,
       propertyId
     );
-    
+
     res.json(lots);
   } catch (error: any) {
     console.error('GET /api/properties/:propertyId/lots error:', error);
@@ -576,7 +577,7 @@ app.get('/api/properties/:propertyId/lots/:lotId', authMiddleware, async (req, r
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Lote no encontrado' });
     }
-    
+
     res.json(rows[0]);
   } catch (error: any) {
     console.error('GET /api/properties/:propertyId/lots/:lotId error:', error);
@@ -717,17 +718,5 @@ app.get('/api/plots', authMiddleware, async (req, res) => {
 });
 
 // Crops
-app.get('/api/crops', authMiddleware, async (req, res) => {
-  try {
-    res.json([]);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Failed to fetch crops' });
-  }
-});
+app.use('/api/crops', cropsRouter);
 
-// Start Server
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`AgroX Backend running on port ${PORT}`);
-});
