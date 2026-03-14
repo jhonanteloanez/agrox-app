@@ -3,6 +3,7 @@ import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import { prisma } from './prisma';
 import cropsRouter from './routes/crops';
+import inventoryRouter from './routes/inventory';
 
 const app = express();
 app.use(cors());
@@ -705,9 +706,7 @@ app.get('/api/plots', authMiddleware, async (req, res) => {
     const userId = req.user!.sub;
     const orgId = await getOrgIdForUser(userId);
     const plots = await prisma.$queryRawUnsafe<any[]>(
-      `SELECT p.* FROM public.plot p
-       JOIN public.property pr ON pr.property_id = p.property_id
-       WHERE pr.organization_id = $1::uuid AND p.deleted_at IS NULL`,
+      `SELECT p.plot_id, p.property_id, p.name, p.area_m2,p.description, p.status, p.created_at, p.updated_at, pr.name as property_name FROM public.plot p JOIN public.property pr ON pr.property_id = p.property_id WHERE pr.organization_id= $1::uuid AND p.deleted_at IS NULL`,
       orgId
     );
     res.json(plots);
@@ -718,5 +717,13 @@ app.get('/api/plots', authMiddleware, async (req, res) => {
 });
 
 // Crops
-app.use('/api/crops', cropsRouter);
+app.use('/api/crops', authMiddleware, cropsRouter);
+
+// Inventory
+app.use('/api/inventory', authMiddleware, inventoryRouter);
+
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { MapPin, ChevronLeft, Ruler, Radio, Calendar, Hash, Loader2, AlertCircle, Plus, X, Edit2, Trash2, CheckCircle } from 'lucide-react';
+import { MapPin, ChevronLeft, Ruler, Radio, Calendar, Hash, Loader2, AlertCircle, Plus, X, Edit2, Trash2, CheckCircle, Layers } from 'lucide-react';
 
 interface PropertyDetail {
   property_id: string;
@@ -18,6 +18,7 @@ interface PropertyDetail {
   elevation_m: number | null;
   climate_radius_km: number;
   status: string;
+  polygon_wkt: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -365,10 +366,17 @@ const PropertyDetailPage: React.FC = () => {
                       </div>
 
                       {user?.role === 'PRODUCTOR' && (
-                        <div className="flex space-x-2 pt-3 border-t border-white/5">
+                        <div className="flex flex-wrap gap-2 pt-3 border-t border-white/5">
+                          <button
+                            onClick={() => navigate(`/crops?plot_id=${lot.lot_id}`)}
+                            className="flex-1 min-w-[80px] flex items-center justify-center space-x-1.5 bg-emerald-600/10 hover:bg-emerald-600/20 border border-emerald-500/20 hover:border-emerald-500/40 text-emerald-400 py-1.5 rounded-xl text-xs font-medium transition-all"
+                          >
+                            <Layers className="w-3.5 h-3.5" />
+                            <span>Cultivos</span>
+                          </button>
                           <button
                             onClick={() => handleEditLot(lot)}
-                            className="flex-1 flex items-center justify-center space-x-1.5 bg-slate-800/60 hover:bg-emerald-600/20 border border-white/5 hover:border-emerald-500/30 text-slate-300 hover:text-emerald-400 py-1.5 rounded-xl text-xs font-medium transition-all"
+                            className="flex-1 min-w-[80px] flex items-center justify-center space-x-1.5 bg-slate-800/60 hover:bg-white/5 border border-white/5 text-slate-300 hover:text-white py-1.5 rounded-xl text-xs font-medium transition-all"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                             <span>Editar</span>

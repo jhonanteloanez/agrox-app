@@ -3,14 +3,18 @@ import { prisma } from '../prisma';
 import { getOrgIdForUser } from '../index';
 
 const router = Router();
-router.use((req: any, res: any, next: any) => {
-    if (!req.headers['authorization'])
-        return res.status(401).json({ error: 'No autorizado' });
-    next();
-});
+
+// ── BigInt → String helper ──────────────────────────────────────────────
+function serializeRow(row: any): any {
+    const result: any = {};
+    for (const key of Object.keys(row)) {
+        result[key] = typeof row[key] === 'bigint' ? row[key].toString() : row[key];
+    }
+    return result;
+}
+
 
 // ── Catálogo ──────────────────────────────────────────────────────────────
-
 router.get('/products', async (req: Request, res: Response) => {
     try {
         const { name = null, category = null } = req.query;
@@ -44,13 +48,13 @@ router.get('/products/:productId/stages', async (req: Request, res: Response) =>
     }
 });
 
-
 // ── Ciclos de cultivo ─────────────────────────────────────────────────────
-
 router.post('/', async (req: Request, res: Response) => {
-    const userId = (req as any).user.id;
+    const userId = (req as any).user?.sub;
+    console.log('🔍 [POST /crops] userId desde JWT:', userId);
     try {
         const orgId = await getOrgIdForUser(userId);
+        console.log('🏢 [POST /crops] orgId encontrado:', orgId);
         if (!orgId) return res.status(403).json({ error: 'Usuario sin organización' });
 
         const { plot_id, product_id, planting_date, area_ha,
@@ -61,22 +65,20 @@ router.post('/', async (req: Request, res: Response) => {
         if (Number(area_ha) <= 0)
             return res.status(400).json({ error: 'area_ha debe ser mayor que 0' });
 
-        // Verificar lote pertenece a la org
         const plotCheck = await prisma.$queryRawUnsafe<any[]>(`
       SELECT pl.plot_id FROM public.plot pl
       JOIN public.property pr ON pl.property_id = pr.property_id
-      WHERE pl.plot_id = $1
-        AND pr.organization_id = $2
+      WHERE pl.plot_id = $1::uuid
+        AND pr.organization_id = $2::uuid
         AND pl.deleted_at IS NULL
     `, plot_id, orgId);
         if (!plotCheck.length)
             return res.status(404).json({ error: 'Lote no encontrado o no pertenece a tu organización' });
 
-        // Regla MVP: 1 ciclo activo por lote
         const active = await prisma.$queryRawUnsafe<any[]>(`
       SELECT crop_id FROM public.crop
-      WHERE plot_id = $1
-        AND organization_id = $2
+      WHERE plot_id = $1::uuid
+        AND organization_id = $2::uuid
         AND status NOT IN ('Cosechado/Finalizado', 'Cerrado')
         AND deleted_at IS NULL
     `, plot_id, orgId);
@@ -92,7 +94,10 @@ router.post('/', async (req: Request, res: Response) => {
             parseFloat(area_ha), estimated_harvest_date,
             orgId, userId, notes);
 
-        return res.status(201).json({ message: 'Ciclo registrado', crop_id: result[0]?.crop_id });
+        return res.status(201).json({
+            message: 'Ciclo registrado',
+            crop_id: result[0]?.crop_id?.toString()
+        });
     } catch (err: any) {
         if (err.message?.includes('etapas fenológicas') || err.message?.includes('harvest_time'))
             return res.status(422).json({ error: err.message });
@@ -101,32 +106,39 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 router.get('/', async (req: Request, res: Response) => {
-    const userId = (req as any).user.id;
+    const userId = (req as any).user?.sub;
+    console.log('🔍 [GET /crops] userId desde JWT:', userId);
     try {
         const orgId = await getOrgIdForUser(userId);
+        console.log('🏢 [GET /crops] orgId encontrado:', orgId);
         if (!orgId) return res.status(403).json({ error: 'Usuario sin organización' });
 
         const { plot_id = null, status = null, q = null,
             include_deleted = 'false', limit = '50', offset = '0' } = req.query;
 
+        const plotIdParam = plot_id ? `'${plot_id}'::uuid` : 'NULL::uuid';
         const rows = await prisma.$queryRawUnsafe<any[]>(`
       SELECT * FROM public.fn_crop_list(
-        $1::uuid, $2::uuid, $3::uuid, $4::text,
-        $5::text, $6::boolean, $7::integer, $8::integer
+        $1::uuid, $2::uuid, ${plotIdParam}, $3::text,
+        $4::text, $5::boolean, $6::integer, $7::integer
       )
-    `, orgId, userId, plot_id ?? null, status ?? null, q ?? null,
+    `, orgId, userId, status ?? null, q ?? null,
             include_deleted === 'true',
-            parseInt(limit as string),
-            parseInt(offset as string));
+            parseInt(limit as string), parseInt(offset as string));
 
-        return res.json({ data: rows, count: rows.length });
+        console.log('🌱 [GET /crops] filas retornadas:', rows.length);
+        return res.json({
+            data: rows.map(serializeRow),
+            count: rows.length
+        });
     } catch (err: any) {
+        console.log('❌ [GET /crops] error:', err.message);
         return res.status(500).json({ error: err.message });
     }
 });
 
 router.get('/:id', async (req: Request, res: Response) => {
-    const userId = (req as any).user.id;
+    const userId = (req as any).user?.sub;
     try {
         const orgId = await getOrgIdForUser(userId);
         if (!orgId) return res.status(403).json({ error: 'Usuario sin organización' });
@@ -137,14 +149,14 @@ router.get('/:id', async (req: Request, res: Response) => {
 
         if (!rows.length || !rows[0])
             return res.status(404).json({ error: 'Cultivo no encontrado' });
-        return res.json({ data: rows[0] });
+        return res.json({ data: serializeRow(rows[0]) });
     } catch (err: any) {
         return res.status(500).json({ error: err.message });
     }
 });
 
 router.patch('/:id', async (req: Request, res: Response) => {
-    const userId = (req as any).user.id;
+    const userId = (req as any).user?.sub;
     try {
         const orgId = await getOrgIdForUser(userId);
         if (!orgId) return res.status(403).json({ error: 'Usuario sin organización' });
@@ -171,7 +183,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
 });
 
 router.patch('/:id/status', async (req: Request, res: Response) => {
-    const userId = (req as any).user.id;
+    const userId = (req as any).user?.sub;
     try {
         const orgId = await getOrgIdForUser(userId);
         if (!orgId) return res.status(403).json({ error: 'Usuario sin organización' });
@@ -193,7 +205,7 @@ router.patch('/:id/status', async (req: Request, res: Response) => {
 });
 
 router.delete('/:id', async (req: Request, res: Response) => {
-    const userId = (req as any).user.id;
+    const userId = (req as any).user?.sub;
     try {
         const orgId = await getOrgIdForUser(userId);
         if (!orgId) return res.status(403).json({ error: 'Usuario sin organización' });
@@ -209,15 +221,16 @@ router.delete('/:id', async (req: Request, res: Response) => {
 });
 
 router.get('/:id/stages', async (req: Request, res: Response) => {
-    const userId = (req as any).user.id;
+    const userId = (req as any).user?.sub;
     try {
         const rows = await prisma.$queryRawUnsafe<any[]>(`
       SELECT * FROM public.fn_get_phenological_stages($1::bigint, $2::uuid)
     `, parseInt(req.params.id), userId);
-        return res.json({ data: rows });
+        return res.json({ data: rows.map(serializeRow) });
     } catch (err: any) {
         return res.status(500).json({ error: err.message });
     }
 });
 
 export default router;
+

@@ -7,6 +7,9 @@ import RegisterPage from './pages/RegisterPage';
 import Dashboard from './Dashboard';
 import PropertiesPage from './pages/PropertiesPage';
 import PropertyDetailPage from './pages/PropertyDetailPage';
+import CropsPage from './pages/Crops';
+import InventoryPage from './pages/Inventory';
+import Layout from './components/Layout';
 
 const App: React.FC = () => {
   return (
@@ -17,10 +20,14 @@ const App: React.FC = () => {
           <Route path="/register" element={<RegisterPage />} />
 
           <Route element={<ProtectedRoute />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/properties" element={<PropertiesPage />} />
-            <Route path="/properties/:id" element={<PropertyDetailPage />} />
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route element={<Layout />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/properties" element={<PropertiesPage />} />
+              <Route path="/properties/:id" element={<PropertyDetailPage />} />
+              <Route path="/crops" element={<CropsPage />} />
+              <Route path="/inventory" element={<InventoryPage />} />
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            </Route>
           </Route>
 
           {/* Catch all */}

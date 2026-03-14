@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
-import { Layout, Plus, Building2, Map as MapIcon, Layers } from 'lucide-react';
+import { Layout, Plus, Building2, Map as MapIcon, Layers, Activity, Package } from 'lucide-react';
 
 interface OrgData {
     name: string;
@@ -14,6 +14,9 @@ const Dashboard: React.FC = () => {
     const [orgData, setOrgData] = useState<OrgData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [propertyCount, setPropertyCount] = useState<number | null>(null);
+    const [cropCount, setCropCount] = useState<number | null>(null);
+    const [plotCount, setPlotCount] = useState<number | null>(null);
+    const [inventoryCount, setInventoryCount] = useState<number | null>(null);
 
     useEffect(() => {
         if (!token) return;
@@ -48,8 +51,53 @@ const Dashboard: React.FC = () => {
             }
         };
 
+        const fetchCropCount = async () => {
+            try {
+                const response = await fetch('http://localhost:3001/api/crops', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    setCropCount(Array.isArray(data.data) ? data.data.length : 0);
+                }
+            } catch (error) {
+                console.error('Error fetching crops:', error);
+            }
+        };
+
+        const fetchPlots = async () => {
+            try {
+                const response = await fetch('http://localhost:3001/api/plots', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    setPlotCount(Array.isArray(data) ? data.length : 0);
+                }
+            } catch (error) {
+                console.error('Error fetching plots:', error);
+            }
+        };
+
+        const fetchInventoryCount = async () => {
+            try {
+                const response = await fetch('http://localhost:3001/api/inventory', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    setInventoryCount(Array.isArray(data.data) ? data.data.length : 0);
+                }
+            } catch (error) {
+                console.error('Error fetching inventory:', error);
+            }
+        };
+
         fetchOrgData();
         fetchPropertyCount();
+        fetchCropCount();
+        fetchPlots();
+        fetchInventoryCount();
     }, [token]);
 
     return (
@@ -70,7 +118,7 @@ const Dashboard: React.FC = () => {
                             <h2 className="text-emerald-500 font-semibold tracking-widest uppercase text-sm">Panel de Control</h2>
                         </div>
                         <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">
-                            Bienvenido, <span className="text-emerald-400">{user?.first_name} {user?.last_name}</span>
+                            Bienvenido, <span className="text-emerald-400">{user?.first_name || 'Productor'} {user?.last_name || ''}</span>
                         </h1>
                         <div className="flex items-center space-x-4 text-slate-400">
                             {isLoading ? (
@@ -126,7 +174,7 @@ const Dashboard: React.FC = () => {
                         </div>
                     </button>
 
-                    {/* Placeholder Card: Lotes */}
+                    {/* Plots Card */}
                     <div className="bg-slate-900/40 backdrop-blur-xl border border-white/10 p-8 rounded-3xl hover:border-emerald-500/30 transition-all group">
                         <div className="flex items-start justify-between mb-6">
                             <div className="bg-emerald-500/10 p-4 rounded-2xl border border-emerald-500/20 group-hover:bg-emerald-500/20 transition-colors">
@@ -138,13 +186,80 @@ const Dashboard: React.FC = () => {
                         </div>
                         <h3 className="text-slate-400 font-medium mb-1">Lotes Activos</h3>
                         <div className="flex items-baseline space-x-2">
-                            <span className="text-5xl font-bold">0</span>
+                            {plotCount === null ? (
+                                <div className="h-12 w-16 bg-slate-800 animate-pulse rounded-lg"></div>
+                            ) : (
+                                <span className="text-5xl font-bold">{plotCount}</span>
+                            )}
                             <span className="text-slate-500 text-sm">parcelas</span>
                         </div>
                         <div className="mt-8 pt-6 border-t border-white/5">
-                            <p className="text-slate-500 text-sm">Comienza agregando tu primera propiedad.</p>
+                            <p className="text-slate-500 text-sm">Organiza tu producción por lotes.</p>
                         </div>
                     </div>
+
+                    {/* Crops Card */}
+                    <button
+                        onClick={() => navigate('/crops')}
+                        className="bg-slate-900/40 backdrop-blur-xl border border-white/10 p-8 rounded-3xl hover:border-emerald-500/30 transition-all group text-left relative overflow-hidden"
+                    >
+                        {/* Subtle interactive glow */}
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 blur-3xl -mr-16 -mt-16 group-hover:bg-emerald-500/10 transition-colors"></div>
+                        
+                        <div className="flex items-start justify-between mb-6 relative z-10">
+                            <div className="bg-emerald-500/10 p-4 rounded-2xl border border-emerald-500/20 group-hover:bg-emerald-500/20 transition-colors">
+                                <Activity className="text-emerald-500 w-8 h-8" />
+                            </div>
+                            <span className="bg-slate-800 text-emerald-400 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-tighter border border-emerald-500/20">
+                                Producción
+                            </span>
+                        </div>
+                        <h3 className="text-slate-400 font-medium mb-1 relative z-10">Ciclos de Cultivo</h3>
+                        <div className="flex items-baseline space-x-2 relative z-10">
+                            {cropCount === null ? (
+                                <div className="h-12 w-16 bg-slate-800 animate-pulse rounded-lg"></div>
+                            ) : (
+                                <span className="text-5xl font-bold">{cropCount}</span>
+                            )}
+                            <span className="text-slate-500 text-sm">activos</span>
+                        </div>
+                        <div className="mt-8 pt-6 border-t border-white/5 relative z-10">
+                            <p className="text-slate-500 text-sm group-hover:text-emerald-400 transition-colors">
+                                Ver cronograma de siembra →
+                            </p>
+                        </div>
+                    </button>
+
+                    {/* Inventory Card */}
+                    <button
+                        onClick={() => navigate('/inventory')}
+                        className="bg-slate-900/40 backdrop-blur-xl border border-white/10 p-8 rounded-3xl hover:border-indigo-500/30 transition-all group text-left relative overflow-hidden"
+                    >
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 blur-3xl -mr-16 -mt-16 group-hover:bg-indigo-500/10 transition-colors"></div>
+                        
+                        <div className="flex items-start justify-between mb-6 relative z-10">
+                            <div className="bg-indigo-500/10 p-4 rounded-2xl border border-indigo-500/20 group-hover:bg-indigo-500/20 transition-colors">
+                                <Package className="text-indigo-400 w-8 h-8" />
+                            </div>
+                            <span className="bg-slate-800 text-indigo-400 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-tighter border border-indigo-500/20">
+                                Insumos
+                            </span>
+                        </div>
+                        <h3 className="text-slate-400 font-medium mb-1 relative z-10">Inventario</h3>
+                        <div className="flex items-baseline space-x-2 relative z-10">
+                            {inventoryCount === null ? (
+                                <div className="h-12 w-16 bg-slate-800 animate-pulse rounded-lg"></div>
+                            ) : (
+                                <span className="text-5xl font-bold">{inventoryCount}</span>
+                            )}
+                            <span className="text-slate-500 text-sm">ítems</span>
+                        </div>
+                        <div className="mt-8 pt-6 border-t border-white/5 relative z-10">
+                            <p className="text-slate-500 text-sm group-hover:text-indigo-400 transition-colors">
+                                Gestionar stock →
+                            </p>
+                        </div>
+                    </button>
 
                     {/* Quick Start Card */}
                     <div className="bg-emerald-600/10 backdrop-blur-xl border border-emerald-500/20 p-8 rounded-3xl flex flex-col justify-center items-center text-center">
