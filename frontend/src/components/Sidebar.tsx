@@ -1,10 +1,13 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
-  LayoutDashboard, 
-  MapPin, 
-  Activity, 
-  Package, 
+  LayoutDashboard,
+  MapPin,
+  Activity,
+  Package,
+  DollarSign,
+  ClipboardList,
+  CalendarDays,
   LogOut,
   ChevronRight,
   Leaf
@@ -21,6 +24,9 @@ const Sidebar: React.FC = () => {
         { name: 'Propiedades', path: '/properties', icon: MapPin },
         { name: 'Cultivos', path: '/crops', icon: Activity },
         { name: 'Inventario', path: '/inventory', icon: Package },
+        { name: 'Económico', path: '/economic', icon: DollarSign },
+        { name: 'Actividades', path: '/activities', icon: ClipboardList },
+        { name: 'Calendario', path: '/calendar', icon: CalendarDays },
     ];
 
     const isActive = (path: string) => location.pathname.startsWith(path);

@@ -4,6 +4,8 @@ import jwt from 'jsonwebtoken';
 import { prisma } from './prisma';
 import cropsRouter from './routes/crops';
 import inventoryRouter from './routes/inventory';
+import economicRouter from './routes/economic';
+import activitiesRouter from './routes/activities';
 
 const app = express();
 app.use(cors());
@@ -721,6 +723,12 @@ app.use('/api/crops', authMiddleware, cropsRouter);
 
 // Inventory
 app.use('/api/inventory', authMiddleware, inventoryRouter);
+
+// Economic
+app.use('/api/economic', authMiddleware, economicRouter);
+
+// Activities & Calendar (/api/activities + /api/activities/calendar)
+app.use('/api/activities', authMiddleware, activitiesRouter);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
