@@ -1,46 +1,87 @@
-<<<<<<< HEAD
-# AgroX Application Source
+AgroX
+Plataforma SaaS multi-tenant para gestión agrícola en Bolivia, orientada a productores individuales y cooperativas de Santa Cruz.
 
-This application has been manually scaffolded because `Node.js / npm` was not detected on this system.
+Stack Tecnológico
+Frontend: React + Vite + TypeScript + Tailwind CSS + Lucide React
 
-## Project Structure
-- **/backend**: Express server, Prisma schema, and API routes mapping to the existing SQL schema.
-- **/frontend**: React + Vite application with Tailwind CSS, Recharts, and Lucide React. Contains a premium mock dashboard.
+Backend: Node.js + Express + TypeScript + Prisma
 
-## Setup Instructions
+Base de datos: PostgreSQL vía Supabase
 
-1. **Install Node.js**: Please install Node.js (version 18 or above recommended) from [nodejs.org](https://nodejs.org).
-2. **Backend Setup**:
-   ```bash
-   cd backend
-   npm install
-   ```
-   - Create a `.env` file in the `backend` folder with your PostgreSQL credentials:
-     ```env
-     DATABASE_URL="postgresql://user:password@localhost:5432/agrox_db_name?schema=public"
-     JWT_SECRET="agrox-dev-secret"
-     PORT=3001
-     ```
-   - Generate the Prisma Client:
-     ```bash
-     npx prisma generate
-     ```
-   - Run the development server:
-     ```bash
-     npm run dev
-     ```
+Autenticación: JWT personalizado con roles RBAC
 
-3. **Frontend Setup**:
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
-   ```
-   - Once running, the frontend will be available at `http://localhost:5173`. You will see the beautiful, premium Dashboard exactly as requested.
+Estructura del Proyecto
+text
+agrox-app/
+├── backend/
+│   ├── src/
+│   │   ├── routes/         # Endpoints REST
+│   │   ├── middleware/      # Auth, validaciones
+│   │   └── index.ts        # Entry point
+│   ├── prisma/
+│   │   └── schema.prisma
+│   └── .env
+└── frontend/
+    ├── src/
+    │   ├── pages/          # Vistas principales
+    │   ├── components/     # Componentes reutilizables
+    │   └── App.tsx
+    └── vite.config.ts
+Setup
+Requisitos
+Node.js 18+
 
-## Notes
-- The models in `backend/prisma/schema.prisma` strictly match your SQL schema names and enums.
-- The `user_roles` check configures RLS per transaction by pushing the JWT claims to `request.jwt.claims`.
-=======
-# agrox-app
->>>>>>> d77d8e26bf1068fa8f291e9dcddcd0f30adee34b
+Cuenta en Supabase con el schema aplicado
+
+Backend
+bash
+cd backend
+npm install
+Crea un archivo .env en /backend:
+
+text
+DATABASE_URL="postgresql://user:password@host:5432/postgres?schema=public"
+JWT_SECRET="tu-secreto-aqui"
+PORT=3001
+bash
+npx prisma generate
+npm run dev
+Frontend
+bash
+cd frontend
+npm install
+npm run dev
+Frontend disponible en http://localhost:5173
+
+Módulos Implementados
+Módulo	Ruta	Estado
+Dashboard	/dashboard	✅
+Propiedades	/properties	✅
+Lotes	/plots	✅
+Cultivos	/crops	✅
+Inventario	/inventory	✅
+Módulo Económico	/economic	✅
+Actividades	/activities	✅
+Calendario	/calendar	✅
+Alertas Climáticas	/alerts	🔜
+Notificaciones	—	🔜
+Reportes	—	🔜
+Planes de Suscripción
+P1 — Productor Solo: usuario único, acceso completo a sus recursos
+
+P2 — Cooperativa: múltiples usuarios con roles (Owner, Productor, Operador, Solo Lectura), gestión de asientos y solicitudes de inventario
+
+Variables de Entorno
+Variable	Descripción
+DATABASE_URL	Cadena de conexión Supabase/PostgreSQL
+JWT_SECRET	Secreto para firmar tokens JWT
+PORT	Puerto del backend (default: 3001)
+Notas
+Los modelos en prisma/schema.prisma coinciden estrictamente con el schema SQL de Supabase
+
+Todas las operaciones de base de datos usan funciones PL/pgSQL (fn_*) definidas en Supabase
+
+BigInt serializado en todas las respuestas para compatibilidad con JSON
+
+RLS habilitado en todas las tablas
+
