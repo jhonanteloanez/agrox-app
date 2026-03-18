@@ -6,6 +6,8 @@ import cropsRouter from './routes/crops';
 import inventoryRouter from './routes/inventory';
 import economicRouter from './routes/economic';
 import activitiesRouter from './routes/activities';
+import alertsRouter from './routes/alerts';
+import notificationsRouter from './routes/notifications';
 
 const app = express();
 app.use(cors());
@@ -729,6 +731,12 @@ app.use('/api/economic', authMiddleware, economicRouter);
 
 // Activities & Calendar (/api/activities + /api/activities/calendar)
 app.use('/api/activities', authMiddleware, activitiesRouter);
+
+// Climate Alerts
+app.use('/api/alerts', authMiddleware, alertsRouter);
+
+// Notifications
+app.use('/api/notifications', authMiddleware, notificationsRouter);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {

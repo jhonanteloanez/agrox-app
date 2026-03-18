@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { 
+import {
   LayoutDashboard,
   MapPin,
   Activity,
@@ -8,6 +8,7 @@ import {
   DollarSign,
   ClipboardList,
   CalendarDays,
+  CloudRain,
   LogOut,
   ChevronRight,
   Leaf
@@ -27,6 +28,7 @@ const Sidebar: React.FC = () => {
         { name: 'Económico', path: '/economic', icon: DollarSign },
         { name: 'Actividades', path: '/activities', icon: ClipboardList },
         { name: 'Calendario', path: '/calendar', icon: CalendarDays },
+        { name: 'Alertas',    path: '/alerts',   icon: CloudRain     },
     ];
 
     const isActive = (path: string) => location.pathname.startsWith(path);
