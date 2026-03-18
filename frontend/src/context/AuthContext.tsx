@@ -35,6 +35,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(false);
     }, []);
 
+    // Global 401 interceptor: auto-logout on expired / invalid tokens.
+    // Patches window.fetch once on mount; no page-level changes needed.
+    useEffect(() => {
+        const originalFetch = window.fetch.bind(window);
+
+        window.fetch = async (...args: Parameters<typeof fetch>): Promise<Response> => {
+            const response = await originalFetch(...args);
+
+            const url =
+                typeof args[0] === 'string'
+                    ? args[0]
+                    : args[0] instanceof URL
+                    ? args[0].href
+                    : (args[0] as Request).url;
+
+            // Skip auth routes to avoid redirect loops on login/register
+            if (response.status === 401 && !url.includes('/api/auth/')) {
+                localStorage.removeItem('agrox_token');
+                localStorage.removeItem('agrox_user');
+                window.location.replace('/login');
+            }
+
+            return response;
+        };
+
+        return () => {
+            window.fetch = originalFetch;
+        };
+    }, []);
+
     const login = (newToken: string, newUser: User) => {
         setToken(newToken);
         setUser(newUser);
