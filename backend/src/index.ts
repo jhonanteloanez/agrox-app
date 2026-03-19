@@ -738,6 +738,101 @@ app.use('/api/alerts', authMiddleware, alertsRouter);
 // Notifications
 app.use('/api/notifications', authMiddleware, notificationsRouter);
 
+// ─── Profile ──────────────────────────────────────────────────────────────────
+
+/** GET /api/auth/me — returns authenticated user's data + active plan */
+app.get('/api/auth/me', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user!.sub;
+
+    const users = await prisma.$queryRawUnsafe<any[]>(
+      `SELECT id, email, first_name, last_name, username, phone, status, created_at
+       FROM custom_auth.users WHERE id = $1::uuid`,
+      userId
+    );
+
+    if (users.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    const planRows = await prisma.$queryRawUnsafe<any[]>(
+      `SELECT s.plan_code FROM public.org_user_role r
+       JOIN public.subscription s ON s.organization_id = r.organization_id
+       WHERE r.user_id = $1::uuid AND s.status = 'ACTIVE' LIMIT 1`,
+      userId
+    );
+
+    const plan_code = planRows.length > 0 ? planRows[0].plan_code : 'P1';
+
+    res.json({ ...users[0], plan_code });
+  } catch (error: any) {
+    console.error('GET /api/auth/me error:', error);
+    res.status(500).json({ error: error.message || 'Error al obtener el perfil' });
+  }
+});
+
+/** PUT /api/auth/me — update first_name, last_name, phone */
+app.put('/api/auth/me', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user!.sub;
+    const { first_name, last_name, phone } = req.body;
+
+    if (!first_name || typeof first_name !== 'string' || first_name.trim() === '') {
+      return res.status(400).json({ error: 'El nombre es obligatorio' });
+    }
+    if (!last_name || typeof last_name !== 'string' || last_name.trim() === '') {
+      return res.status(400).json({ error: 'El apellido es obligatorio' });
+    }
+
+    const updated = await prisma.$queryRawUnsafe<any[]>(
+      `UPDATE custom_auth.users
+       SET first_name = $1, last_name = $2, phone = $3, updated_at = NOW()
+       WHERE id = $4::uuid
+       RETURNING id, email, first_name, last_name, username, phone, status, created_at`,
+      first_name.trim(), last_name.trim(), phone || null, userId
+    );
+
+    res.json(updated[0]);
+  } catch (error: any) {
+    console.error('PUT /api/auth/me error:', error);
+    res.status(500).json({ error: error.message || 'Error al actualizar el perfil' });
+  }
+});
+
+/** PUT /api/auth/change-password — verify current and update to new */
+app.put('/api/auth/change-password', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user!.sub;
+    const { current_password, new_password } = req.body;
+
+    if (!new_password || new_password.length < 8) {
+      return res.status(400).json({ error: 'La nueva contraseña debe tener mínimo 8 caracteres' });
+    }
+
+    const check = await prisma.$queryRawUnsafe<any[]>(
+      `SELECT id FROM custom_auth.users
+       WHERE id = $1::uuid AND password = crypt($2, password)`,
+      userId, current_password
+    );
+
+    if (check.length === 0) {
+      return res.status(401).json({ error: 'Contraseña actual incorrecta' });
+    }
+
+    await prisma.$executeRawUnsafe(
+      `UPDATE custom_auth.users
+       SET password = crypt($1, gen_salt('bf')), updated_at = NOW()
+       WHERE id = $2::uuid`,
+      new_password, userId
+    );
+
+    res.json({ message: 'Contraseña actualizada correctamente' });
+  } catch (error: any) {
+    console.error('PUT /api/auth/change-password error:', error);
+    res.status(500).json({ error: error.message || 'Error al cambiar la contraseña' });
+  }
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);

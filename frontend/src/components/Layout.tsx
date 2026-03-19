@@ -12,6 +12,7 @@ const ROUTE_TITLES: Record<string, string> = {
     '/activities': 'Actividades',
     '/calendar':   'Calendario',
     '/alerts':     'Alertas Climáticas',
+    '/profile':    'Mi Perfil',
 };
 
 const Layout: React.FC = () => {

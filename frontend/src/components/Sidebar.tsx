@@ -11,7 +11,8 @@ import {
   CloudRain,
   LogOut,
   ChevronRight,
-  Leaf
+  Leaf,
+  User
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -70,18 +71,26 @@ const Sidebar: React.FC = () => {
 
             {/* User Profile & Logout */}
             <div className="p-4 mt-auto border-t border-white/5 bg-slate-900/40 backdrop-blur-md">
-                <div className="flex items-center space-x-3 mb-4 px-2">
-                    <div className="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-500 font-bold uppercase">
+                <button
+                    onClick={() => navigate('/profile')}
+                    className={`w-full flex items-center space-x-3 mb-3 px-2 py-2 rounded-xl transition-all duration-200 group ${
+                        isActive('/profile') ? 'bg-emerald-500/10 border border-emerald-500/20' : 'hover:bg-white/5 border border-transparent'
+                    }`}
+                >
+                    <div className="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-500 font-bold uppercase flex-shrink-0">
                         {user?.first_name?.charAt(0) || 'P'}
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 text-left">
                         <p className="text-sm font-bold text-slate-200 truncate">{user?.first_name} {user?.last_name}</p>
-                        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Plan {user?.role === 'ADMIN' ? 'Admin' : 'Productor'}</p>
+                        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold flex items-center space-x-1">
+                            <User className="w-3 h-3" />
+                            <span>Mi Perfil</span>
+                        </p>
                     </div>
-                </div>
-                
+                </button>
+
                 <button
-                    onClick={logout}
+                    onClick={() => { logout(); navigate('/login'); }}
                     className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-slate-500 hover:text-red-400 hover:bg-red-500/5 transition-all duration-300 group"
                 >
                     <LogOut className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
