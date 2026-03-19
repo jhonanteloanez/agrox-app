@@ -34,7 +34,7 @@ interface Lot {
   updated_at: string;
 }
 
-const API = 'http://localhost:3001';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 /** Parse WKT POLYGON((...)) into an array of {lat, lon} pairs */
 function parseWKT(wkt: string | null): { lat: number; lon: number }[] {

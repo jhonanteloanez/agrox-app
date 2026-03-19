@@ -26,7 +26,7 @@ const RegisterPage: React.FC = () => {
         const timer = setTimeout(async () => {
             if (formData.email && formData.email.includes('@')) {
                 try {
-                    const res = await fetch(`http://localhost:3001/api/auth/check-email?email=${encodeURIComponent(formData.email)}`);
+                    const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/auth/check-email?email=${encodeURIComponent(formData.email)}`);
                     const data = await res.json();
                     if (!data.available) {
                         setEmailError('Este correo ya está registrado');
@@ -53,7 +53,7 @@ const RegisterPage: React.FC = () => {
         setIsLoading(true);
 
         try {
-            const response = await fetch('http://localhost:3001/api/auth/register', {
+            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

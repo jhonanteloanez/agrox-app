@@ -21,7 +21,7 @@ interface Property {
 
 interface PolygonPoint { lat: string; lon: string; }
 
-const API = 'http://localhost:3001';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 const PropertiesPage: React.FC = () => {
   const { token } = useAuth();

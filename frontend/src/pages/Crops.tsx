@@ -42,7 +42,7 @@ interface Stage {
   stage_order: number;
 }
 
-const API = 'http://localhost:3001';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 const CropsPage: React.FC = () => {
   const { token } = useAuth();

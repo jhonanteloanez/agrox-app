@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Lock, Save, Key, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-const API = 'http://localhost:3001';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 interface ProfileData {
   id: string;

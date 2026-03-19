@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Bell, X, Check, CheckCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-const API = 'http://localhost:3001';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 type NotificationType = 'ALERTA_CLIMA' | 'SOLICITUD_INVENTARIO' | 'SISTEMA';
 

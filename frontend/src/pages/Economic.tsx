@@ -6,7 +6,7 @@ import {
   Loader2, TrendingUp, TrendingDown, BarChart3, Tag, Calendar
 } from 'lucide-react';
 
-const API = 'http://localhost:3001';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

@@ -23,7 +23,7 @@ const Dashboard: React.FC = () => {
 
         const fetchOrgData = async () => {
             try {
-                const response = await fetch('http://localhost:3001/api/org/my-org', {
+                const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/org/my-org`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (response.ok) {
@@ -39,7 +39,7 @@ const Dashboard: React.FC = () => {
 
         const fetchPropertyCount = async () => {
             try {
-                const response = await fetch('http://localhost:3001/api/properties', {
+                const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/properties`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (response.ok) {
@@ -53,7 +53,7 @@ const Dashboard: React.FC = () => {
 
         const fetchCropCount = async () => {
             try {
-                const response = await fetch('http://localhost:3001/api/crops', {
+                const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/crops`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (response.ok) {
@@ -67,7 +67,7 @@ const Dashboard: React.FC = () => {
 
         const fetchPlots = async () => {
             try {
-                const response = await fetch('http://localhost:3001/api/plots', {
+                const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/plots`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (response.ok) {
@@ -81,7 +81,7 @@ const Dashboard: React.FC = () => {
 
         const fetchInventoryCount = async () => {
             try {
-                const response = await fetch('http://localhost:3001/api/inventory', {
+                const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/inventory`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (response.ok) {
