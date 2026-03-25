@@ -414,7 +414,7 @@ const CropsPage: React.FC = () => {
                         <div className="text-slate-300">{new Date(crop.planting_date).toLocaleDateString()}</div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="font-mono text-emerald-400">{crop.area_ha} ha</div>
+                        <div className="font-mono text-emerald-400">{(Number(crop.area_ha) / 10000).toFixed(2)} ha</div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col space-y-1.5">

@@ -834,6 +834,301 @@ app.put('/api/auth/change-password', authMiddleware, async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3001;
+
+app.put('/api/properties/:id', authMiddleware, async (req, res) => {
+  const userId = req.user!.sub;
+  const { id } = req.params;
+  const orgId = await getOrgIdForUser(userId);
+  const { name, department, municipality, community, climate_radius_km } = req.body;
+
+  if (!name?.trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
+  const radius = Number(climate_radius_km);
+  if (isNaN(radius) || radius < 5 || radius > 100)
+    return res.status(400).json({ error: 'Radio climático debe estar entre 5 y 100 km' });
+
+  const propCheck = await prisma.$queryRawUnsafe<any[]>(
+    `SELECT property_id FROM public.property
+     WHERE property_id = $1::uuid AND organization_id = $2::uuid AND deleted_at IS NULL`,
+    id, orgId
+  );
+  if (propCheck.length === 0) return res.status(404).json({ error: 'Propiedad no encontrada' });
+
+  const updated = await prisma.$queryRawUnsafe<any[]>(
+    `UPDATE public.property
+     SET name = $1, department = $2, municipality = $3, community = $4,
+         climate_radius_km = $5, updated_at = NOW()
+     WHERE property_id = $6::uuid
+     RETURNING property_id, name, department, municipality, community,
+               climate_radius_km, status, updated_at`,
+    name.trim(), department, municipality, community ?? null, radius, id
+  );
+
+  await logAudit('property', id, 'UPDATE', orgId, userId, { name, department });
+  res.json(updated[0]);
+});
+app.get('/api/dashboard', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user!.sub;
+    const orgId = await getOrgIdForUser(userId);
+
+    const [properties, plots, crops, alerts] = await Promise.all([
+      prisma.$queryRawUnsafe<any[]>(
+        `SELECT COUNT(*) as total FROM public.property
+         WHERE organization_id = $1::uuid AND deleted_at IS NULL`, orgId),
+      prisma.$queryRawUnsafe<any[]>(
+        `SELECT COUNT(*) as total FROM public.plot pl
+         JOIN public.property pr ON pr.property_id = pl.property_id
+         WHERE pr.organization_id = $1::uuid AND pl.deleted_at IS NULL`, orgId),
+      prisma.$queryRawUnsafe<any[]>(
+        `SELECT COUNT(*) as total FROM public.crop c
+         JOIN public.plot pl ON pl.plot_id = c.plot_id
+         JOIN public.property pr ON pr.property_id = pl.property_id
+         WHERE pr.organization_id = $1::uuid
+         AND c.status NOT IN ('Cosechado', 'Cerrado')`, orgId),
+      prisma.$queryRawUnsafe<any[]>(
+        `SELECT COUNT(*) as total FROM public.climate_alert_config
+         WHERE organization_id = $1::uuid AND is_active = true`, orgId),
+    ]);
+
+    res.json({
+      properties: Number(properties[0].total),
+      plots: Number(plots[0].total),
+      active_crops: Number(crops[0].total),
+      active_alerts: Number(alerts[0].total),
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+app.get('/api/products', authMiddleware, async (req, res) => {
+  try {
+    const products = await prisma.$queryRawUnsafe<any[]>(
+      `SELECT product_id, name, scientific_name, category, harvest_time
+       FROM public.product
+       ORDER BY name ASC`
+    );
+    res.json(products);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ─── Settings Endpoints ─────────────────────────────────────────────────────
+
+// GET user profile
+app.get('/api/auth/profile', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user!.sub;
+    const user = await prisma.$queryRawUnsafe<any[]>(
+      `SELECT id, first_name, last_name, email, phone, profile_photo_url, email_verified, created_at
+       FROM custom_auth.users
+       WHERE id = $1::uuid`,
+      userId
+    );
+
+    if (user.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    res.json(user[0]);
+  } catch (error: any) {
+    console.error('GET /api/auth/profile error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT update user profile
+app.put('/api/auth/profile', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user!.sub;
+    const { first_name, last_name, email, phone } = req.body;
+
+    // Validate required fields
+    if (!first_name?.trim() || !last_name?.trim() || !email?.trim()) {
+      return res.status(400).json({ error: 'Nombre, apellido y email son obligatorios' });
+    }
+
+    // Check if email is already taken by another user
+    const emailCheck = await prisma.$queryRawUnsafe<any[]>(
+      `SELECT id FROM custom_auth.users WHERE email = $1 AND id != $2::uuid`,
+      email.toLowerCase(), userId
+    );
+
+    if (emailCheck.length > 0) {
+      return res.status(400).json({ error: 'El email ya está registrado por otro usuario' });
+    }
+
+    // Update user profile
+    const updated = await prisma.$queryRawUnsafe<any[]>(
+      `UPDATE custom_auth.users
+       SET first_name = $1, last_name = $2, email = $3, phone = $4, updated_at = NOW()
+       WHERE id = $5::uuid
+       RETURNING id, first_name, last_name, email, phone, profile_photo_url, email_verified, updated_at`,
+      first_name.trim(), last_name.trim(), email.toLowerCase(), phone || null, userId
+    );
+
+    if (updated.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    // Log audit event
+    await logAudit('user_profile', userId, 'UPDATE', userId, userId, { first_name, last_name, email });
+
+    res.json(updated[0]);
+  } catch (error: any) {
+    console.error('PUT /api/auth/profile error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST change password
+app.post('/api/auth/change-password', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user!.sub;
+    const { current_password, new_password } = req.body;
+
+    if (!current_password || !new_password) {
+      return res.status(400).json({ error: 'Contraseña actual y nueva son obligatorias' });
+    }
+
+    if (new_password.length < 8) {
+      return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 8 caracteres' });
+    }
+
+    // Verify current password matches
+    const user = await prisma.$queryRawUnsafe<any[]>(
+      `SELECT password FROM custom_auth.users WHERE id = $1::uuid`,
+      userId
+    );
+
+    if (user.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    // Note: In production, use bcrypt to compare hashed passwords
+    // For now, we're doing a simple comparison. You should implement proper password hashing.
+    const crypto = require('crypto');
+    const currentPasswordHash = crypto.createHash('sha256').update(current_password).digest('hex');
+    const storedPassword = user[0].password;
+
+    if (currentPasswordHash !== storedPassword && current_password !== storedPassword) {
+      return res.status(401).json({ error: 'Contraseña actual incorrecta' });
+    }
+
+    // Update password
+    const hashedNewPassword = crypto.createHash('sha256').update(new_password).digest('hex');
+    
+    await prisma.$queryRawUnsafe(
+      `UPDATE custom_auth.users SET password = $1, updated_at = NOW() WHERE id = $2::uuid`,
+      hashedNewPassword, userId
+    );
+
+    // Log audit event
+    await logAudit('user_password', userId, 'UPDATE', userId, userId, {});
+
+    res.json({ message: 'Contraseña actualizada correctamente' });
+  } catch (error: any) {
+    console.error('POST /api/auth/change-password error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT update notification preferences
+app.put('/api/auth/notifications', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user!.sub;
+    const { notify_inapp, notify_whatsapp, whatsapp_number, alert_types } = req.body;
+
+    // In a real app, you'd store these preferences in a user_preferences table
+    // For now, we're just validating and returning success
+    if (notify_whatsapp && !whatsapp_number) {
+      return res.status(400).json({ error: 'Número de WhatsApp es obligatorio si habilitas notificaciones' });
+    }
+
+    if (notify_whatsapp && !/^\+\d{1,3}\d{4,14}$/.test(whatsapp_number)) {
+      return res.status(400).json({ error: 'Número de WhatsApp inválido' });
+    }
+
+    // TODO: Store preferences in database when table is created
+    // For now, returning success response
+
+    res.json({
+      message: 'Preferencias de notificaciones actualizadas',
+      preferences: {
+        notify_inapp,
+        notify_whatsapp,
+        whatsapp_number: notify_whatsapp ? whatsapp_number : null,
+        alert_types,
+      },
+    });
+  } catch (error: any) {
+    console.error('PUT /api/auth/notifications error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET organization info
+app.get('/api/organization', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user!.sub;
+    const orgId = await getOrgIdForUser(userId);
+
+    const org = await prisma.$queryRawUnsafe<any[]>(
+      `SELECT organization_id, name, type, status, climate_radius_km, created_at, updated_at
+       FROM public.organization
+       WHERE organization_id = $1::uuid`,
+      orgId
+    );
+
+    if (org.length === 0) {
+      return res.status(404).json({ error: 'Organización no encontrada' });
+    }
+
+    res.json(org[0]);
+  } catch (error: any) {
+    console.error('GET /api/organization error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT update organization
+app.put('/api/organization', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user!.sub;
+    const orgId = await getOrgIdForUser(userId);
+    const { name, type, climate_radius_km } = req.body;
+
+    if (!name?.trim()) {
+      return res.status(400).json({ error: 'El nombre de organización es obligatorio' });
+    }
+
+    const radius = Number(climate_radius_km);
+    if (isNaN(radius) || radius < 5 || radius > 100) {
+      return res.status(400).json({ error: 'Radio climático debe estar entre 5 y 100 km' });
+    }
+
+    const updated = await prisma.$queryRawUnsafe<any[]>(
+      `UPDATE public.organization
+       SET name = $1, type = $2, climate_radius_km = $3, updated_at = NOW()
+       WHERE organization_id = $4::uuid
+       RETURNING organization_id, name, type, status, climate_radius_km, updated_at`,
+      name.trim(), type || 'P1', radius, orgId
+    );
+
+    if (updated.length === 0) {
+      return res.status(404).json({ error: 'Organización no encontrada' });
+    }
+
+    // Log audit event
+    await logAudit('organization', orgId, 'UPDATE', orgId, userId, { name, type });
+
+    res.json(updated[0]);
+  } catch (error: any) {
+    console.error('PUT /api/organization error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });

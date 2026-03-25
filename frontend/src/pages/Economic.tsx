@@ -94,6 +94,8 @@ const EconomicPage: React.FC = () => {
   const [costs, setCosts] = useState<Cost[]>([]);
   const [rentability, setRentability] = useState<Rentability>({ total_income: 0, total_cost: 0, profit: 0 });
   const [prices, setPrices] = useState<PriceReference[]>([]);
+  const [crops, setCrops] = useState<any[]>([]);
+  const [plots, setPlots] = useState<any[]>([]);
 
   // Modals
   const [showIncomeForm, setShowIncomeForm] = useState(false);
@@ -120,21 +122,25 @@ const EconomicPage: React.FC = () => {
     if (!token) return;
     setLoading(true);
     try {
-      const [incRes, costRes, rentRes, priceRes] = await Promise.all([
+      const [incRes, costRes, rentRes, priceRes, cropsRes, plotsRes] = await Promise.all([
         fetch(`${API}/api/economic/income`, { headers: authHeaders }),
         fetch(`${API}/api/economic/costs`, { headers: authHeaders }),
         fetch(`${API}/api/economic/rentability`, { headers: authHeaders }),
         fetch(`${API}/api/economic/prices`, { headers: authHeaders }),
+        fetch(`${API}/api/crops?status=Activo`, { headers: authHeaders }),
+        fetch(`${API}/api/plots`, { headers: authHeaders }),
       ]);
 
-      const [incData, costData, rentData, priceData] = await Promise.all([
-        incRes.json(), costRes.json(), rentRes.json(), priceRes.json(),
+      const [incData, costData, rentData, priceData, cropsData, plotsData] = await Promise.all([
+        incRes.json(), costRes.json(), rentRes.json(), priceRes.json(), cropsRes.json(), plotsRes.json(),
       ]);
 
       if (incRes.ok) setIncomes(incData.data || []);
       if (costRes.ok) setCosts(costData.data || []);
       if (rentRes.ok) setRentability(rentData.data || { total_income: 0, total_cost: 0, profit: 0 });
       if (priceRes.ok) setPrices(priceData.data || []);
+      if (cropsRes.ok) setCrops(cropsData.data || []);
+      if (plotsRes.ok) setPlots(plotsData || []);
     } catch {
       setError('Error de conexión al cargar datos económicos.');
     } finally {
@@ -512,14 +518,22 @@ const EconomicPage: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className={lbl}>ID Cultivo (opcional)</label>
-                <input type="number" placeholder="ej. 3" value={incomeForm.crop_id}
-                  onChange={e => setIncomeForm({ ...incomeForm, crop_id: e.target.value })} className={inp} />
+                <label className={lbl}>Cultivo (opcional)</label>
+                <select value={incomeForm.crop_id} onChange={e => setIncomeForm({ ...incomeForm, crop_id: e.target.value })} className={inp}>
+                  <option value="">Ninguno</option>
+                  {crops.map((c: any) => (
+                    <option key={c.crop_id} value={c.crop_id}>{c.product_name} - {c.plot_name}</option>
+                  ))}
+                </select>
               </div>
               <div className="space-y-1.5">
-                <label className={lbl}>ID Parcela (opcional)</label>
-                <input type="text" placeholder="uuid..." value={incomeForm.plot_id}
-                  onChange={e => setIncomeForm({ ...incomeForm, plot_id: e.target.value })} className={inp} />
+                <label className={lbl}>Parcela / Lote (opcional)</label>
+                <select value={incomeForm.plot_id} onChange={e => setIncomeForm({ ...incomeForm, plot_id: e.target.value })} className={inp}>
+                  <option value="">Ninguna</option>
+                  {plots.map((p: any) => (
+                    <option key={p.plot_id} value={p.plot_id}>{p.name} - {p.property_name}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -578,15 +592,28 @@ const EconomicPage: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className={lbl}>ID Cultivo (opcional)</label>
-                <input type="number" placeholder="ej. 3" value={costForm.crop_id}
-                  onChange={e => setCostForm({ ...costForm, crop_id: e.target.value })} className={inp} />
+                <label className={lbl}>Cultivo (opcional)</label>
+                <select value={costForm.crop_id} onChange={e => setCostForm({ ...costForm, crop_id: e.target.value })} className={inp}>
+                  <option value="">Ninguno</option>
+                  {crops.map((c: any) => (
+                    <option key={c.crop_id} value={c.crop_id}>{c.product_name} - {c.plot_name}</option>
+                  ))}
+                </select>
               </div>
               <div className="space-y-1.5">
-                <label className={lbl}>ID Ítem Inventario (opcional)</label>
-                <input type="number" placeholder="ej. 12" value={costForm.inventory_item_id}
-                  onChange={e => setCostForm({ ...costForm, inventory_item_id: e.target.value })} className={inp} />
+                <label className={lbl}>Parcela / Lote (opcional)</label>
+                <select value={costForm.plot_id} onChange={e => setCostForm({ ...costForm, plot_id: e.target.value })} className={inp}>
+                  <option value="">Ninguna</option>
+                  {plots.map((p: any) => (
+                    <option key={p.plot_id} value={p.plot_id}>{p.name} - {p.property_name}</option>
+                  ))}
+                </select>
               </div>
+            </div>
+            <div className="space-y-1.5 mt-4">
+               <label className={lbl}>ID Ítem Inventario (opcional)</label>
+               <input type="number" placeholder="ej. 12" value={costForm.inventory_item_id}
+                 onChange={e => setCostForm({ ...costForm, inventory_item_id: e.target.value })} className={inp} />
             </div>
 
             <div className="space-y-1.5">

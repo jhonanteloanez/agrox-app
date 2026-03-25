@@ -52,12 +52,6 @@ const CalendarPage: React.FC = () => {
     Authorization: `Bearer ${token}`,
   }), [token]);
 
-  // ── Date helpers ────────────────────────────────────────────────────────────
-
-  const fromDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-  const lastDay = new Date(year, month + 1, 0).getDate();
-  const toDate = `${year}-${String(month + 1).padStart(2, '0')}-${lastDay}`;
-
   // ── Fetch events ────────────────────────────────────────────────────────────
 
   const fetchEvents = useCallback(async () => {
@@ -65,18 +59,30 @@ const CalendarPage: React.FC = () => {
     setLoading(true);
     try {
       const res = await fetch(
-        `${API}/api/activities/calendar?from_date=${fromDate}&to_date=${toDate}`,
+        `${API}/api/activities`,
         { headers: authHeaders }
       );
       const data = await res.json();
-      if (res.ok) setEvents(data.data || []);
-      else setError(data.error || 'Error al cargar el calendario.');
+      if (res.ok) {
+        const mapped = (data.data || []).map((a: any) => ({
+          event_id: a.activity_id || Math.random().toString(),
+          title: a.title,
+          event_date: a.scheduled_date,
+          event_type: 'ACTIVIDAD',
+          description: a.description,
+          activity_id: a.activity_id,
+          crop_id: a.crop_id
+        }));
+        setEvents(mapped);
+      } else {
+        setError(data.error || 'Error al cargar el calendario.');
+      }
     } catch {
       setError('Error de conexión.');
     } finally {
       setLoading(false);
     }
-  }, [token, authHeaders, fromDate, toDate]);
+  }, [token, authHeaders]);
 
   useEffect(() => { fetchEvents(); }, [fetchEvents]);
 
@@ -97,7 +103,7 @@ const CalendarPage: React.FC = () => {
   // ── Calendar grid ───────────────────────────────────────────────────────────
 
   const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0=Sun
-  const totalDays = lastDay;
+  const totalDays = new Date(year, month + 1, 0).getDate();
 
   // Events indexed by day number
   const eventsByDay = useMemo(() => {

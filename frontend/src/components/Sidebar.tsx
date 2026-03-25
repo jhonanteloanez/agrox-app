@@ -9,7 +9,7 @@ import {
   ClipboardList,
   CalendarDays,
   CloudRain,
-  LogOut,
+  Settings,
   ChevronRight,
   Leaf,
   User
@@ -69,7 +69,7 @@ const Sidebar: React.FC = () => {
                 ))}
             </nav>
 
-            {/* User Profile & Logout */}
+            {/* User Profile & Settings */}
             <div className="p-4 mt-auto border-t border-white/5 bg-slate-900/40 backdrop-blur-md">
                 <button
                     onClick={() => navigate('/profile')}
@@ -87,13 +87,22 @@ const Sidebar: React.FC = () => {
                             <span>Mi Perfil</span>
                         </p>
                     </div>
+                    <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-emerald-400 transition-colors" />
+                </button>
+
+                <button
+                    onClick={() => navigate('/settings')}
+                    className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/5 transition-all duration-300 group"
+                >
+                    <Settings className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+                    <span className="text-sm font-semibold">Configuración</span>
                 </button>
 
                 <button
                     onClick={() => { logout(); navigate('/login'); }}
                     className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-slate-500 hover:text-red-400 hover:bg-red-500/5 transition-all duration-300 group"
                 >
-                    <LogOut className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+                    <CloudRain className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
                     <span className="text-sm font-semibold">Cerrar Sesión</span>
                 </button>
             </div>

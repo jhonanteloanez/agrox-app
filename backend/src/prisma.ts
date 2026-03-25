@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 
 export const prisma = new PrismaClient();
 
+
 /**
  * Creates a Prisma Client extension that applies Row Level Security (RLS)
  * by setting standard JWT claims in the PostgreSQL transaction context.

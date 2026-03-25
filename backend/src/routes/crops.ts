@@ -119,10 +119,11 @@ router.get('/', async (req: Request, res: Response) => {
         const plotIdParam = plot_id ? `'${plot_id}'::uuid` : 'NULL::uuid';
         const rows = await prisma.$queryRawUnsafe<any[]>(`
       SELECT * FROM public.fn_crop_list(
-        $1::uuid, $2::uuid, ${plotIdParam}, $3::text,
-        $4::text, $5::boolean, $6::integer, $7::integer
+        $1::uuid, $2::uuid, $3::uuid, $4::text,
+        $5::text, $6::boolean, $7::integer, $8::integer
       )
-    `, orgId, userId, status ?? null, q ?? null,
+    `, orgId, userId, plot_id ? plot_id : null, status ?? null, q ?? null,
+
             include_deleted === 'true',
             parseInt(limit as string), parseInt(offset as string));
 

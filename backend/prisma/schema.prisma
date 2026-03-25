@@ -86,7 +86,7 @@ model auth_audit {
 }
 
 model crop {
-  crop_id                Int                  @id @default(autoincrement())
+  crop_id                BigInt               @id @default(autoincrement())
   plot_id                String?              @db.Uuid
   product_id             Int?
   planting_date          DateTime             @db.Date
@@ -95,8 +95,21 @@ model crop {
   status                 String?              @db.VarChar(50)
   growth_stage           phenological_stages?
   area_planted           Decimal              @db.Decimal
+  organization_id        String?              @db.Uuid
+  area_ha                Decimal?             @db.Decimal
+  notes                  String?
+  created_by             String?              @db.Uuid
+  updated_by             String?              @db.Uuid
+  created_at             DateTime?            @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime?            @default(now()) @db.Timestamptz(6)
+  deleted_at             DateTime?            @db.Timestamptz(6)
+  deleted_by             String?              @db.Uuid
+  activity               activity[]
+  calendar_event         calendar_event[]
   plot                   plot?                @relation(fields: [plot_id], references: [plot_id], onDelete: Cascade, onUpdate: NoAction)
   product                product?             @relation(fields: [product_id], references: [product_id], onDelete: Cascade, onUpdate: NoAction)
+  economic_cost          economic_cost[]
+  economic_income        economic_income[]
 
   @@schema("public")
 }
@@ -150,19 +163,29 @@ model org_user_role {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model organization {
-  organization_id String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name            String          @unique(map: "uk_org_name") @db.VarChar(120)
-  type            String          @db.VarChar(16)
-  status          status_basic    @default(ACTIVE)
-  created_at      DateTime        @default(now()) @db.Timestamptz(6)
-  updated_at      DateTime        @default(now()) @db.Timestamptz(6)
-  audit_event     audit_event[]
-  org_invite      org_invite[]
-  org_user_role   org_user_role[]
-  payment         payment[]
-  property        property[]
-  subscription    subscription[]
-  user_roles      user_roles[]
+  organization_id      String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                 String                 @unique(map: "uk_org_name") @db.VarChar(120)
+  type                 String                 @db.VarChar(16)
+  status               status_basic           @default(ACTIVE)
+  created_at           DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime               @default(now()) @db.Timestamptz(6)
+  activity             activity[]
+  audit_event          audit_event[]
+  calendar_event       calendar_event[]
+  climate_alert_config climate_alert_config[]
+  economic_cost        economic_cost[]
+  economic_income      economic_income[]
+  inventory_item       inventory_item[]
+  inventory_movement   inventory_movement[]
+  inventory_request    inventory_request[]
+  notification         notification[]
+  org_invite           org_invite[]
+  org_user_role        org_user_role[]
+  payment              payment[]
+  price_reference      price_reference[]
+  property             property[]
+  subscription         subscription[]
+  user_roles           user_roles[]
 
   @@schema("public")
 }
@@ -240,18 +263,22 @@ model phenological_stage_progress {
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model plot {
-  plot_id     String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  property_id String                    @db.Uuid
-  name        String
-  area_m2     Decimal                   @db.Decimal
-  location    Unsupported("geography")?
-  status      status_basic?
-  description String?
-  created_at  DateTime?                 @default(now()) @db.Timestamptz(6)
-  updated_at  DateTime?                 @default(now()) @db.Timestamptz(6)
-  deleted_at  DateTime?                 @db.Timestamptz(6)
-  crop        crop[]
-  property    property                  @relation(fields: [property_id], references: [property_id], onDelete: NoAction, onUpdate: NoAction)
+  plot_id         String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  property_id     String                    @db.Uuid
+  name            String
+  area_m2         Decimal                   @db.Decimal
+  location        Unsupported("geography")?
+  status          status_basic?
+  description     String?
+  created_at      DateTime?                 @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime?                 @default(now()) @db.Timestamptz(6)
+  deleted_at      DateTime?                 @db.Timestamptz(6)
+  activity        activity[]
+  calendar_event  calendar_event[]
+  crop            crop[]
+  economic_cost   economic_cost[]
+  economic_income economic_income[]
+  property        property                  @relation(fields: [property_id], references: [property_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([property_id], map: "idx_plot_property_id")
   @@schema("public")
@@ -306,26 +333,27 @@ model product_phenology_stage {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model property {
-  property_id       String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organization_id   String                    @db.Uuid
-  name              String                    @db.VarChar(120)
-  alias             String?                   @db.VarChar(60)
-  geo_area          Unsupported("geography")?
-  centroid_lat      Decimal?                  @db.Decimal(9, 6)
-  centroid_lon      Decimal?                  @db.Decimal(9, 6)
-  area_m2           Decimal                   @db.Decimal(14, 2)
-  elevation_m       Decimal?                  @db.Decimal(7, 2)
-  address           String?                   @db.VarChar(180)
-  climate_radius_km Decimal                   @default(10.00) @db.Decimal(5, 2)
-  status            status_basic              @default(ACTIVE)
-  created_at        DateTime                  @default(now()) @db.Timestamptz(6)
-  updated_at        DateTime                  @default(now()) @db.Timestamptz(6)
-  deleted_at        DateTime?                 @db.Timestamptz(6)
-  department        String?
-  municipality      String?
-  community         String?
-  plot              plot[]
-  organization      organization              @relation(fields: [organization_id], references: [organization_id], onDelete: Cascade, onUpdate: NoAction)
+  property_id          String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id      String                    @db.Uuid
+  name                 String                    @db.VarChar(120)
+  alias                String?                   @db.VarChar(60)
+  geo_area             Unsupported("geography")?
+  centroid_lat         Decimal?                  @db.Decimal(9, 6)
+  centroid_lon         Decimal?                  @db.Decimal(9, 6)
+  area_m2              Decimal                   @db.Decimal(14, 2)
+  elevation_m          Decimal?                  @db.Decimal(7, 2)
+  address              String?                   @db.VarChar(180)
+  climate_radius_km    Decimal                   @default(10.00) @db.Decimal(5, 2)
+  status               status_basic              @default(ACTIVE)
+  created_at           DateTime                  @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime                  @default(now()) @db.Timestamptz(6)
+  deleted_at           DateTime?                 @db.Timestamptz(6)
+  department           String?
+  municipality         String?
+  community            String?
+  climate_alert_config climate_alert_config[]
+  plot                 plot[]
+  organization         organization              @relation(fields: [organization_id], references: [organization_id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([organization_id, name], map: "uk_property_name_per_org")
   @@index([geo_area], map: "idx_property_geo", type: Gist)
@@ -441,6 +469,238 @@ model user_roles {
   users           users?        @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([user_id, organization_id], map: "user_roles_unique")
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model activity {
+  activity_id     BigInt           @id @default(autoincrement())
+  organization_id String           @db.Uuid
+  crop_id         BigInt?
+  plot_id         String?          @db.Uuid
+  title           String           @db.VarChar(150)
+  description     String?
+  activity_type   String           @db.VarChar(60)
+  status          String           @default("PENDIENTE") @db.VarChar(30)
+  scheduled_date  DateTime         @db.Date
+  completed_date  DateTime?        @db.Date
+  assigned_to     String?          @db.Uuid
+  notes           String?
+  created_at      DateTime         @default(now()) @db.Timestamptz(6)
+  created_by      String?          @db.Uuid
+  updated_at      DateTime         @default(now()) @db.Timestamptz(6)
+  updated_by      String?          @db.Uuid
+  deleted_at      DateTime?        @db.Timestamptz(6)
+  deleted_by      String?          @db.Uuid
+  crop            crop?            @relation(fields: [crop_id], references: [crop_id], onDelete: NoAction, onUpdate: NoAction)
+  organization    organization     @relation(fields: [organization_id], references: [organization_id], onDelete: NoAction, onUpdate: NoAction)
+  plot            plot?            @relation(fields: [plot_id], references: [plot_id], onDelete: NoAction, onUpdate: NoAction)
+  calendar_event  calendar_event[]
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model calendar_event {
+  event_id        BigInt       @id @default(autoincrement())
+  organization_id String       @db.Uuid
+  activity_id     BigInt?
+  crop_id         BigInt?
+  plot_id         String?      @db.Uuid
+  title           String       @db.VarChar(150)
+  description     String?
+  event_type      String       @db.VarChar(60)
+  start_date      DateTime     @db.Date
+  end_date        DateTime?    @db.Date
+  all_day         Boolean?     @default(true)
+  color           String?      @default("#22c55e") @db.VarChar(20)
+  created_at      DateTime     @default(now()) @db.Timestamptz(6)
+  created_by      String?      @db.Uuid
+  updated_at      DateTime     @default(now()) @db.Timestamptz(6)
+  updated_by      String?      @db.Uuid
+  deleted_at      DateTime?    @db.Timestamptz(6)
+  deleted_by      String?      @db.Uuid
+  activity        activity?    @relation(fields: [activity_id], references: [activity_id], onDelete: NoAction, onUpdate: NoAction)
+  crop            crop?        @relation(fields: [crop_id], references: [crop_id], onDelete: NoAction, onUpdate: NoAction)
+  organization    organization @relation(fields: [organization_id], references: [organization_id], onDelete: NoAction, onUpdate: NoAction)
+  plot            plot?        @relation(fields: [plot_id], references: [plot_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model climate_alert_config {
+  config_id       BigInt       @id @default(autoincrement())
+  organization_id String       @db.Uuid
+  property_id     String       @db.Uuid
+  alert_type      String       @db.VarChar(40)
+  threshold_value Decimal      @db.Decimal(8, 2)
+  threshold_unit  String       @default("mm") @db.VarChar(20)
+  notify_inapp    Boolean?     @default(true)
+  notify_whatsapp Boolean?     @default(false)
+  whatsapp_number String?      @db.VarChar(20)
+  is_active       Boolean?     @default(true)
+  created_at      DateTime     @default(now()) @db.Timestamptz(6)
+  created_by      String?      @db.Uuid
+  updated_at      DateTime     @default(now()) @db.Timestamptz(6)
+  updated_by      String?      @db.Uuid
+  deleted_at      DateTime?    @db.Timestamptz(6)
+  deleted_by      String?      @db.Uuid
+  organization    organization @relation(fields: [organization_id], references: [organization_id], onDelete: NoAction, onUpdate: NoAction)
+  property        property     @relation(fields: [property_id], references: [property_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model economic_cost {
+  cost_id           BigInt          @id @default(autoincrement())
+  organization_id   String          @db.Uuid
+  crop_id           BigInt?
+  plot_id           String?         @db.Uuid
+  description       String          @db.VarChar(200)
+  amount            Decimal         @db.Decimal(14, 2)
+  currency          String          @default("BOB") @db.VarChar(10)
+  cost_date         DateTime        @default(dbgenerated("CURRENT_DATE")) @db.Date
+  category          String?         @default("INSUMO") @db.VarChar(60)
+  inventory_item_id BigInt?
+  notes             String?
+  created_at        DateTime        @default(now()) @db.Timestamptz(6)
+  created_by        String?         @db.Uuid
+  updated_at        DateTime        @default(now()) @db.Timestamptz(6)
+  updated_by        String?         @db.Uuid
+  deleted_at        DateTime?       @db.Timestamptz(6)
+  deleted_by        String?         @db.Uuid
+  crop              crop?           @relation(fields: [crop_id], references: [crop_id], onDelete: NoAction, onUpdate: NoAction)
+  inventory_item    inventory_item? @relation(fields: [inventory_item_id], references: [item_id], onDelete: NoAction, onUpdate: NoAction)
+  organization      organization    @relation(fields: [organization_id], references: [organization_id], onDelete: NoAction, onUpdate: NoAction)
+  plot              plot?           @relation(fields: [plot_id], references: [plot_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model economic_income {
+  income_id       BigInt       @id @default(autoincrement())
+  organization_id String       @db.Uuid
+  crop_id         BigInt?
+  plot_id         String?      @db.Uuid
+  description     String       @db.VarChar(200)
+  amount          Decimal      @db.Decimal(14, 2)
+  currency        String       @default("BOB") @db.VarChar(10)
+  income_date     DateTime     @default(dbgenerated("CURRENT_DATE")) @db.Date
+  category        String?      @default("VENTA") @db.VarChar(60)
+  notes           String?
+  created_at      DateTime     @default(now()) @db.Timestamptz(6)
+  created_by      String?      @db.Uuid
+  updated_at      DateTime     @default(now()) @db.Timestamptz(6)
+  updated_by      String?      @db.Uuid
+  deleted_at      DateTime?    @db.Timestamptz(6)
+  deleted_by      String?      @db.Uuid
+  crop            crop?        @relation(fields: [crop_id], references: [crop_id], onDelete: NoAction, onUpdate: NoAction)
+  organization    organization @relation(fields: [organization_id], references: [organization_id], onDelete: NoAction, onUpdate: NoAction)
+  plot            plot?        @relation(fields: [plot_id], references: [plot_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model inventory_item {
+  item_id            BigInt               @id @default(autoincrement())
+  organization_id    String               @db.Uuid
+  name               String               @db.VarChar(120)
+  category           String               @db.VarChar(60)
+  unit               String               @db.VarChar(20)
+  description        String?
+  quantity           Decimal              @default(0) @db.Decimal(12, 2)
+  min_stock          Decimal              @default(0) @db.Decimal(12, 2)
+  expiration_date    DateTime?            @db.Date
+  created_at         DateTime             @default(now()) @db.Timestamptz(6)
+  created_by         String?              @db.Uuid
+  updated_at         DateTime             @default(now()) @db.Timestamptz(6)
+  updated_by         String?              @db.Uuid
+  deleted_at         DateTime?            @db.Timestamptz(6)
+  deleted_by         String?              @db.Uuid
+  economic_cost      economic_cost[]
+  organization       organization         @relation(fields: [organization_id], references: [organization_id], onDelete: NoAction, onUpdate: NoAction)
+  inventory_movement inventory_movement[]
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model inventory_movement {
+  movement_id     BigInt         @id @default(autoincrement())
+  item_id         BigInt
+  organization_id String         @db.Uuid
+  movement_type   String         @db.VarChar(30)
+  quantity_change Decimal        @db.Decimal(12, 2)
+  crop_id         BigInt?
+  notes           String?
+  created_at      DateTime       @default(now()) @db.Timestamptz(6)
+  created_by      String?        @db.Uuid
+  inventory_item  inventory_item @relation(fields: [item_id], references: [item_id], onDelete: NoAction, onUpdate: NoAction)
+  organization    organization   @relation(fields: [organization_id], references: [organization_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model inventory_request {
+  request_id      BigInt       @id @default(autoincrement())
+  organization_id String       @db.Uuid
+  item_name       String       @db.VarChar(120)
+  quantity        Decimal      @db.Decimal(12, 2)
+  unit            String       @db.VarChar(20)
+  status          String       @default("PENDIENTE") @db.VarChar(20)
+  notes           String?
+  created_at      DateTime     @default(now()) @db.Timestamptz(6)
+  created_by      String?      @db.Uuid
+  updated_at      DateTime     @default(now()) @db.Timestamptz(6)
+  updated_by      String?      @db.Uuid
+  organization    organization @relation(fields: [organization_id], references: [organization_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model notification {
+  notification_id   BigInt       @id @default(autoincrement())
+  organization_id   String       @db.Uuid
+  user_id           String       @db.Uuid
+  title             String       @db.VarChar(150)
+  body              String
+  notification_type String       @db.VarChar(60)
+  entity            String?      @db.VarChar(60)
+  entity_id         String?      @db.VarChar(60)
+  is_read           Boolean?     @default(false)
+  read_at           DateTime?    @db.Timestamptz(6)
+  created_at        DateTime     @default(now()) @db.Timestamptz(6)
+  organization      organization @relation(fields: [organization_id], references: [organization_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model price_reference {
+  price_id        BigInt        @id @default(autoincrement())
+  organization_id String?       @db.Uuid
+  product_id      BigInt?
+  crop_name       String        @db.VarChar(120)
+  price           Decimal       @db.Decimal(12, 2)
+  currency        String        @default("BOB") @db.VarChar(10)
+  source          String        @default("MANUAL") @db.VarChar(60)
+  source_url      String?
+  reference_date  DateTime      @default(dbgenerated("CURRENT_DATE")) @db.Date
+  notes           String?
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  created_by      String?       @db.Uuid
+  updated_at      DateTime      @default(now()) @db.Timestamptz(6)
+  updated_by      String?       @db.Uuid
+  deleted_at      DateTime?     @db.Timestamptz(6)
+  deleted_by      String?       @db.Uuid
+  organization    organization? @relation(fields: [organization_id], references: [organization_id], onDelete: NoAction, onUpdate: NoAction)
+
   @@schema("public")
 }
 

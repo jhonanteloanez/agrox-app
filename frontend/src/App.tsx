@@ -14,6 +14,7 @@ import ActivitiesPage from './pages/Activities';
 import CalendarPage from './pages/Calendar';
 import AlertsPage from './pages/Alerts';
 import ProfilePage from './pages/ProfilePage';
+import SettingsPage from './pages/Settings';
 import Layout from './components/Layout';
 
 const App: React.FC = () => {
@@ -36,6 +37,7 @@ const App: React.FC = () => {
               <Route path="/calendar" element={<CalendarPage />} />
               <Route path="/alerts" element={<AlertsPage />} />
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/settings" element={<SettingsPage />} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
             </Route>
           </Route>

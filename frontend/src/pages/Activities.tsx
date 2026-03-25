@@ -74,6 +74,9 @@ const ActivitiesPage: React.FC = () => {
   const [success, setSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [statusFilter, setStatusFilter] = useState<ActivityStatus | 'TODAS'>('TODAS');
+  
+  const [crops, setCrops] = useState<any[]>([]);
+  const [plots, setPlots] = useState<any[]>([]);
 
   // Modals
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -110,7 +113,25 @@ const ActivitiesPage: React.FC = () => {
     }
   }, [token, authHeaders, statusFilter]);
 
-  useEffect(() => { fetchActivities(); }, [fetchActivities]);
+  const fetchDependencies = useCallback(async () => {
+    if (!token) return;
+    try {
+      const [cropsRes, plotsRes] = await Promise.all([
+        fetch(`${API}/api/crops?status=Activo`, { headers: authHeaders }),
+        fetch(`${API}/api/plots`, { headers: authHeaders }),
+      ]);
+      if (cropsRes.ok) {
+        const data = await cropsRes.json();
+        setCrops(data.data || []);
+      }
+      if (plotsRes.ok) setPlots(await plotsRes.json());
+    } catch (e) { console.error(e); }
+  }, [token, authHeaders]);
+
+  useEffect(() => { 
+    fetchActivities(); 
+    fetchDependencies();
+  }, [fetchActivities, fetchDependencies]);
 
   const showSuccessMsg = (msg: string) => {
     setSuccess(msg);
@@ -412,14 +433,22 @@ const ActivitiesPage: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className={lbl}>ID Cultivo (opcional)</label>
-                  <input type="number" placeholder="ej. 3" value={form.crop_id}
-                    onChange={e => setForm({ ...form, crop_id: e.target.value })} className={inp} />
+                  <label className={lbl}>Cultivo (opcional)</label>
+                  <select value={form.crop_id} onChange={e => setForm({ ...form, crop_id: e.target.value })} className={inp}>
+                    <option value="">Ninguno</option>
+                    {crops.map((c: any) => (
+                      <option key={c.crop_id} value={c.crop_id}>{c.product_name} - {c.plot_name}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className={lbl}>ID Parcela (opcional)</label>
-                  <input type="text" placeholder="uuid..." value={form.plot_id}
-                    onChange={e => setForm({ ...form, plot_id: e.target.value })} className={inp} />
+                  <label className={lbl}>Parcela / Lote (opcional)</label>
+                  <select value={form.plot_id} onChange={e => setForm({ ...form, plot_id: e.target.value })} className={inp}>
+                    <option value="">Ninguna</option>
+                    {plots.map((p: any) => (
+                      <option key={p.plot_id} value={p.plot_id}>{p.name} - {p.property_name}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
