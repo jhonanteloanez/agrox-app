@@ -83,6 +83,7 @@ const SettingsPage: React.FC = () => {
     if (token) {
       fetchUserData();
       fetchOrgData();
+      fetchNotificationPrefs();
     }
   }, [token]);
 
@@ -106,6 +107,24 @@ const SettingsPage: React.FC = () => {
       }
     } catch (e) {
       console.error('Failed to fetch user data:', e);
+    }
+  }, [token, authHeaders]);
+
+  const fetchNotificationPrefs = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/api/auth/notifications`, { headers: authHeaders });
+      if (res.ok) {
+        const data = await res.json();
+        const prefs = data.preferences;
+        setNotifications({
+          notify_inapp: prefs.notify_inapp ?? true,
+          notify_whatsapp: prefs.notify_whatsapp ?? false,
+          whatsapp_number: prefs.whatsapp_number || '',
+          alert_types: prefs.alert_types || ['PRECIPITA', 'TEMP', 'HUMEDAD'],
+        });
+      }
+    } catch (e) {
+      console.error('Failed to fetch notification preferences:', e);
     }
   }, [token, authHeaders]);
 
@@ -191,7 +210,7 @@ const SettingsPage: React.FC = () => {
     setLoading(true);
     try {
       const res = await fetch(`${API}/api/auth/change-password`, {
-        method: 'POST',
+        method: 'PUT',
         headers: authHeaders,
         body: JSON.stringify({
           current_password: passwordForm.current_password,

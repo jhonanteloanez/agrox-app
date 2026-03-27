@@ -64,6 +64,8 @@ router.post('/', async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'plot_id, product_id, planting_date y area_ha son requeridos' });
         if (Number(area_ha) <= 0)
             return res.status(400).json({ error: 'area_ha debe ser mayor que 0' });
+        if (estimated_harvest_date && estimated_harvest_date <= planting_date)
+            return res.status(400).json({ error: 'La fecha estimada de cosecha debe ser posterior a la fecha de siembra' });
 
         const plotCheck = await prisma.$queryRawUnsafe<any[]>(`
       SELECT pl.plot_id FROM public.plot pl

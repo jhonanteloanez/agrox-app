@@ -266,6 +266,12 @@ const EconomicPage: React.FC = () => {
   ];
 
   const profit = Number(rentability.profit);
+  const totalIncome = Number(rentability.total_income);
+  const totalCost = Number(rentability.total_cost);
+  const totalHa = crops.reduce((sum, c) => sum + Number(c.area_ha), 0);
+  const marginPct = totalIncome > 0 ? (profit / totalIncome) * 100 : 0;
+  const costPerHa = totalHa > 0 ? totalCost / totalHa : null;
+  const incomePerHa = totalHa > 0 ? totalIncome / totalHa : null;
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-white font-inter relative overflow-hidden">
@@ -410,36 +416,70 @@ const EconomicPage: React.FC = () => {
 
             {/* ── TAB: RENTABILIDAD ────────────────────────────────────── */}
             {activeTab === 'rentability' && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <RentCard
-                  label="Total Ingresos"
-                  value={fmt(rentability.total_income)}
-                  icon={<TrendingUp className="w-6 h-6 text-emerald-400" />}
-                  color="emerald"
-                />
-                <RentCard
-                  label="Total Costos"
-                  value={fmt(rentability.total_cost)}
-                  icon={<TrendingDown className="w-6 h-6 text-red-400" />}
-                  color="red"
-                />
-                <div className={`bg-slate-900/40 backdrop-blur-xl border rounded-2xl p-6 flex flex-col gap-4 ${
-                  profit >= 0 ? 'border-emerald-500/20' : 'border-red-500/20'
-                }`}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400 text-sm font-semibold uppercase tracking-widest">Ganancia Neta</span>
-                    <BarChart3 className={`w-6 h-6 ${profit >= 0 ? 'text-emerald-400' : 'text-red-400'}`} />
-                  </div>
-                  <div className={`text-3xl font-bold font-mono ${profit >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
-                    {fmt(rentability.profit)}
-                  </div>
-                  <span className={`self-start text-xs font-bold px-3 py-1 rounded-full border ${
-                    profit >= 0
-                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                      : 'bg-red-500/10 text-red-400 border-red-500/20'
+              <div className="space-y-6">
+                {/* Row 1: Totales */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <RentCard
+                    label="Total Ingresos"
+                    value={fmt(rentability.total_income)}
+                    icon={<TrendingUp className="w-6 h-6 text-emerald-400" />}
+                    color="emerald"
+                  />
+                  <RentCard
+                    label="Total Costos"
+                    value={fmt(rentability.total_cost)}
+                    icon={<TrendingDown className="w-6 h-6 text-red-400" />}
+                    color="red"
+                  />
+                  <div className={`bg-slate-900/40 backdrop-blur-xl border rounded-2xl p-6 flex flex-col gap-4 ${
+                    profit >= 0 ? 'border-emerald-500/20' : 'border-red-500/20'
                   }`}>
-                    {profit >= 0 ? 'RENTABLE' : 'EN PÉRDIDA'}
-                  </span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 text-sm font-semibold uppercase tracking-widest">Ganancia Neta</span>
+                      <BarChart3 className={`w-6 h-6 ${profit >= 0 ? 'text-emerald-400' : 'text-red-400'}`} />
+                    </div>
+                    <div className={`text-3xl font-bold font-mono ${profit >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
+                      {fmt(rentability.profit)}
+                    </div>
+                    <span className={`self-start text-xs font-bold px-3 py-1 rounded-full border ${
+                      profit >= 0
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                        : 'bg-red-500/10 text-red-400 border-red-500/20'
+                    }`}>
+                      {profit >= 0 ? 'RENTABLE' : 'EN PÉRDIDA'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Row 2: Métricas por hectárea */}
+                <div className="bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
+                  <div className="flex items-center space-x-2 mb-5">
+                    <BarChart3 className="w-4 h-4 text-amber-400" />
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                      Análisis por Hectárea
+                      {totalHa > 0 && <span className="ml-2 text-slate-500 normal-case font-normal">({totalHa.toFixed(2)} ha activas)</span>}
+                    </span>
+                  </div>
+                  {totalHa === 0 ? (
+                    <p className="text-sm text-slate-500">Sin cultivos activos con área registrada. Registra cultivos para ver métricas por hectárea.</p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="bg-slate-800/50 rounded-xl p-4 border border-white/5">
+                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Ingreso / ha</div>
+                        <div className="text-2xl font-bold font-mono text-emerald-300">{fmt(incomePerHa!)}</div>
+                      </div>
+                      <div className="bg-slate-800/50 rounded-xl p-4 border border-white/5">
+                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Costo / ha</div>
+                        <div className="text-2xl font-bold font-mono text-red-300">{fmt(costPerHa!)}</div>
+                      </div>
+                      <div className="bg-slate-800/50 rounded-xl p-4 border border-white/5">
+                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Margen de Ganancia</div>
+                        <div className={`text-2xl font-bold font-mono ${marginPct >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
+                          {marginPct.toFixed(1)}%
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

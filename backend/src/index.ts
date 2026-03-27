@@ -981,54 +981,20 @@ app.put('/api/auth/profile', authMiddleware, async (req, res) => {
   }
 });
 
-// POST change password
-app.post('/api/auth/change-password', authMiddleware, async (req, res) => {
+
+// GET notification preferences
+app.get('/api/auth/notifications', authMiddleware, async (req, res) => {
   try {
     const userId = req.user!.sub;
-    const { current_password, new_password } = req.body;
-
-    if (!current_password || !new_password) {
-      return res.status(400).json({ error: 'Contraseña actual y nueva son obligatorias' });
-    }
-
-    if (new_password.length < 8) {
-      return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 8 caracteres' });
-    }
-
-    // Verify current password matches
-    const user = await prisma.$queryRawUnsafe<any[]>(
-      `SELECT password FROM custom_auth.users WHERE id = $1::uuid`,
+    const rows = await prisma.$queryRawUnsafe<any[]>(
+      `SELECT notify_inapp, notify_whatsapp, whatsapp_number, alert_types
+       FROM custom_auth.users WHERE id = $1::uuid`,
       userId
     );
-
-    if (user.length === 0) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
-    }
-
-    // Note: In production, use bcrypt to compare hashed passwords
-    // For now, we're doing a simple comparison. You should implement proper password hashing.
-    const crypto = require('crypto');
-    const currentPasswordHash = crypto.createHash('sha256').update(current_password).digest('hex');
-    const storedPassword = user[0].password;
-
-    if (currentPasswordHash !== storedPassword && current_password !== storedPassword) {
-      return res.status(401).json({ error: 'Contraseña actual incorrecta' });
-    }
-
-    // Update password
-    const hashedNewPassword = crypto.createHash('sha256').update(new_password).digest('hex');
-    
-    await prisma.$queryRawUnsafe(
-      `UPDATE custom_auth.users SET password = $1, updated_at = NOW() WHERE id = $2::uuid`,
-      hashedNewPassword, userId
-    );
-
-    // Log audit event
-    await logAudit('user_password', userId, 'UPDATE', userId, userId, {});
-
-    res.json({ message: 'Contraseña actualizada correctamente' });
+    if (!rows.length) return res.status(404).json({ error: 'Usuario no encontrado' });
+    res.json({ preferences: rows[0] });
   } catch (error: any) {
-    console.error('POST /api/auth/change-password error:', error);
+    console.error('GET /api/auth/notifications error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -1039,8 +1005,6 @@ app.put('/api/auth/notifications', authMiddleware, async (req, res) => {
     const userId = req.user!.sub;
     const { notify_inapp, notify_whatsapp, whatsapp_number, alert_types } = req.body;
 
-    // In a real app, you'd store these preferences in a user_preferences table
-    // For now, we're just validating and returning success
     if (notify_whatsapp && !whatsapp_number) {
       return res.status(400).json({ error: 'Número de WhatsApp es obligatorio si habilitas notificaciones' });
     }
@@ -1049,18 +1013,22 @@ app.put('/api/auth/notifications', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Número de WhatsApp inválido' });
     }
 
-    // TODO: Store preferences in database when table is created
-    // For now, returning success response
+    await prisma.$executeRawUnsafe(
+      `UPDATE custom_auth.users
+       SET notify_inapp    = $1,
+           notify_whatsapp = $2,
+           whatsapp_number = $3,
+           alert_types     = $4,
+           updated_at      = NOW()
+       WHERE id = $5::uuid`,
+      notify_inapp ?? true,
+      notify_whatsapp ?? false,
+      notify_whatsapp ? (whatsapp_number ?? null) : null,
+      alert_types ?? [],
+      userId
+    );
 
-    res.json({
-      message: 'Preferencias de notificaciones actualizadas',
-      preferences: {
-        notify_inapp,
-        notify_whatsapp,
-        whatsapp_number: notify_whatsapp ? whatsapp_number : null,
-        alert_types,
-      },
-    });
+    res.json({ message: 'Preferencias de notificaciones actualizadas' });
   } catch (error: any) {
     console.error('PUT /api/auth/notifications error:', error);
     res.status(500).json({ error: error.message });
@@ -1129,7 +1097,24 @@ app.put('/api/organization', authMiddleware, async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+async function runStartupMigrations() {
+  try {
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE custom_auth.users
+        ADD COLUMN IF NOT EXISTS notify_inapp    BOOLEAN DEFAULT true,
+        ADD COLUMN IF NOT EXISTS notify_whatsapp BOOLEAN DEFAULT false,
+        ADD COLUMN IF NOT EXISTS whatsapp_number VARCHAR(20),
+        ADD COLUMN IF NOT EXISTS alert_types     TEXT[] DEFAULT '{}'
+    `);
+    console.log('✅ Startup migrations OK');
+  } catch (err: any) {
+    console.error('⚠️  Startup migrations failed (non-fatal):', err.message);
+  }
+}
+
+runStartupMigrations().then(() => {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+  });
 });
 

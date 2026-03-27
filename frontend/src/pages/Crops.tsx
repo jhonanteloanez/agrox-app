@@ -70,6 +70,7 @@ const CropsPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [plots, setPlots] = useState<Plot[]>([]);
   const [productStages, setProductStages] = useState<Stage[]>([]);
+  const [loadingDeps, setLoadingDeps] = useState(true);
 
   // Registration Form State
   const [formData, setFormData] = useState({
@@ -97,6 +98,7 @@ const CropsPage: React.FC = () => {
   const fetchData = useCallback(async () => {
     if (!token) return;
     setLoading(true);
+    setLoadingDeps(true);
     try {
       const params = new URLSearchParams();
       if (filterPlot) params.append('plot_id', filterPlot);
@@ -125,6 +127,7 @@ const CropsPage: React.FC = () => {
       setError('Error al cargar datos.');
     } finally {
       setLoading(false);
+      setLoadingDeps(false);
     }
   }, [token, filterPlot, filterStatus, searchQuery]);
 
@@ -163,6 +166,10 @@ const CropsPage: React.FC = () => {
 
     if (Number(formData.area_ha) <= 0) {
       return setFormError('El área debe ser mayor a 0 ha.');
+    }
+
+    if (formData.estimated_harvest_date && formData.estimated_harvest_date <= formData.planting_date) {
+      return setFormError('La fecha estimada de cosecha debe ser posterior a la fecha de siembra.');
     }
 
     setSubmitting(true);
@@ -493,9 +500,10 @@ const CropsPage: React.FC = () => {
                 <select
                   value={formData.product_id}
                   onChange={e => setFormData({ ...formData, product_id: e.target.value })}
-                  className="w-full bg-slate-800/50 border border-white/10 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500/50 focus:outline-none transition-all"
+                  className="w-full bg-slate-800/50 border border-white/10 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500/50 focus:outline-none transition-all disabled:opacity-60"
+                  disabled={loadingDeps}
                 >
-                  <option value="">Seleccione un producto</option>
+                  <option value="">{loadingDeps ? 'Cargando productos...' : 'Seleccione un producto'}</option>
                   {products.map(p => (
                     <option key={p.product_id} value={p.product_id}>{p.name} {p.scientific_name ? `(${p.scientific_name})` : ''}</option>
                   ))}
@@ -509,9 +517,10 @@ const CropsPage: React.FC = () => {
                 <select
                   value={formData.plot_id}
                   onChange={e => setFormData({ ...formData, plot_id: e.target.value })}
-                  className="w-full bg-slate-800/50 border border-white/10 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500/50 focus:outline-none transition-all"
+                  className="w-full bg-slate-800/50 border border-white/10 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500/50 focus:outline-none transition-all disabled:opacity-60"
+                  disabled={loadingDeps}
                 >
-                  <option value="">Seleccione un lote</option>
+                  <option value="">{loadingDeps ? 'Cargando lotes...' : 'Seleccione un lote'}</option>
                   {plots.map(p => (
                     <option key={p.plot_id} value={p.plot_id}>{p.name}</option>
                   ))}

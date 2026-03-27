@@ -12,7 +12,8 @@ import {
   Settings,
   ChevronRight,
   Leaf,
-  User
+  User,
+  LogOut
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -102,7 +103,7 @@ const Sidebar: React.FC = () => {
                     onClick={() => { logout(); navigate('/login'); }}
                     className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-slate-500 hover:text-red-400 hover:bg-red-500/5 transition-all duration-300 group"
                 >
-                    <CloudRain className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+                    <LogOut className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
                     <span className="text-sm font-semibold">Cerrar Sesión</span>
                 </button>
             </div>

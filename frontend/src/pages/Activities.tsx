@@ -74,9 +74,11 @@ const ActivitiesPage: React.FC = () => {
   const [success, setSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [statusFilter, setStatusFilter] = useState<ActivityStatus | 'TODAS'>('TODAS');
-  
+  const [dateFilter, setDateFilter] = useState<'TODAS' | 'HOY' | 'SEMANA' | 'MES'>('TODAS');
+
   const [crops, setCrops] = useState<any[]>([]);
   const [plots, setPlots] = useState<any[]>([]);
+  const [loadingDeps, setLoadingDeps] = useState(true);
 
   // Modals
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -94,6 +96,25 @@ const ActivitiesPage: React.FC = () => {
     Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json',
   }), [token]);
+
+  const filteredActivities = useMemo(() => {
+    if (dateFilter === 'TODAS') return activities;
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return activities.filter(act => {
+      const d = new Date(act.scheduled_date);
+      const actDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      if (dateFilter === 'HOY') return actDay.getTime() === today.getTime();
+      if (dateFilter === 'SEMANA') {
+        const weekEnd = new Date(today); weekEnd.setDate(today.getDate() + 7);
+        return actDay >= today && actDay <= weekEnd;
+      }
+      if (dateFilter === 'MES') {
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      }
+      return true;
+    });
+  }, [activities, dateFilter]);
 
   // ── Fetch ───────────────────────────────────────────────────────────────────
 
@@ -115,6 +136,7 @@ const ActivitiesPage: React.FC = () => {
 
   const fetchDependencies = useCallback(async () => {
     if (!token) return;
+    setLoadingDeps(true);
     try {
       const [cropsRes, plotsRes] = await Promise.all([
         fetch(`${API}/api/crops?status=Activo`, { headers: authHeaders }),
@@ -125,7 +147,9 @@ const ActivitiesPage: React.FC = () => {
         setCrops(data.data || []);
       }
       if (plotsRes.ok) setPlots(await plotsRes.json());
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error(e); } finally {
+      setLoadingDeps(false);
+    }
   }, [token, authHeaders]);
 
   useEffect(() => { 
@@ -282,7 +306,7 @@ const ActivitiesPage: React.FC = () => {
         </div>
 
         {/* Status filter tabs */}
-        <div className="flex flex-wrap gap-2 mb-8">
+        <div className="flex flex-wrap gap-2 mb-3">
           {STATUS_FILTERS.map(f => (
             <button
               key={f}
@@ -294,6 +318,23 @@ const ActivitiesPage: React.FC = () => {
               }`}
             >
               {f === 'TODAS' ? 'Todas' : STATUS_LABEL[f as ActivityStatus]}
+            </button>
+          ))}
+        </div>
+
+        {/* Date filter tabs */}
+        <div className="flex flex-wrap gap-2 mb-8">
+          {(['TODAS', 'HOY', 'SEMANA', 'MES'] as const).map(f => (
+            <button
+              key={f}
+              onClick={() => setDateFilter(f)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
+                dateFilter === f
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                  : 'bg-slate-800/50 text-slate-500 border-white/5 hover:text-slate-300'
+              }`}
+            >
+              {f === 'TODAS' ? 'Cualquier fecha' : f === 'HOY' ? 'Hoy' : f === 'SEMANA' ? 'Próximos 7 días' : 'Este mes'}
             </button>
           ))}
         </div>
@@ -315,13 +356,19 @@ const ActivitiesPage: React.FC = () => {
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-8 h-8 text-violet-500 animate-spin" />
           </div>
-        ) : activities.length === 0 ? (
+        ) : filteredActivities.length === 0 ? (
           <div className="bg-slate-900/20 border border-white/5 rounded-3xl p-20 flex flex-col items-center text-center">
             <div className="w-20 h-20 bg-violet-500/5 rounded-full flex items-center justify-center mb-6 border border-violet-500/10">
               <ClipboardList className="w-10 h-10 text-violet-500/50" />
             </div>
-            <h3 className="text-xl font-bold text-slate-300">No hay actividades</h3>
-            <p className="text-slate-500 mt-2">Crea tu primera actividad para planificar el trabajo.</p>
+            <h3 className="text-xl font-bold text-slate-300">
+              {activities.length === 0 ? 'No hay actividades' : 'Sin actividades para este período'}
+            </h3>
+            <p className="text-slate-500 mt-2">
+              {activities.length === 0
+                ? 'Crea tu primera actividad para planificar el trabajo.'
+                : 'Prueba con otro filtro de fecha.'}
+            </p>
           </div>
         ) : (
           <div className="bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden">
@@ -336,7 +383,7 @@ const ActivitiesPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {activities.map(act => {
+                  {filteredActivities.map(act => {
                     const next = NEXT_STATUS[act.status];
                     return (
                       <tr key={act.activity_id} className="hover:bg-white/[0.02] transition-colors group">
@@ -434,8 +481,8 @@ const ActivitiesPage: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className={lbl}>Cultivo (opcional)</label>
-                  <select value={form.crop_id} onChange={e => setForm({ ...form, crop_id: e.target.value })} className={inp}>
-                    <option value="">Ninguno</option>
+                  <select value={form.crop_id} onChange={e => setForm({ ...form, crop_id: e.target.value })} className={inp} disabled={loadingDeps}>
+                    <option value="">{loadingDeps ? 'Cargando cultivos...' : 'Ninguno'}</option>
                     {crops.map((c: any) => (
                       <option key={c.crop_id} value={c.crop_id}>{c.product_name} - {c.plot_name}</option>
                     ))}
@@ -443,8 +490,8 @@ const ActivitiesPage: React.FC = () => {
                 </div>
                 <div className="space-y-1.5">
                   <label className={lbl}>Parcela / Lote (opcional)</label>
-                  <select value={form.plot_id} onChange={e => setForm({ ...form, plot_id: e.target.value })} className={inp}>
-                    <option value="">Ninguna</option>
+                  <select value={form.plot_id} onChange={e => setForm({ ...form, plot_id: e.target.value })} className={inp} disabled={loadingDeps}>
+                    <option value="">{loadingDeps ? 'Cargando lotes...' : 'Ninguna'}</option>
                     {plots.map((p: any) => (
                       <option key={p.plot_id} value={p.plot_id}>{p.name} - {p.property_name}</option>
                     ))}

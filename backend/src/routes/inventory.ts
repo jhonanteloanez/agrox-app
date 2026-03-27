@@ -133,6 +133,23 @@ router.post('/:id/movement', async (req: Request, res: Response) => {
         let qtyToProcess = parseFloat(quantity);
         if (type === 'SALIDA' || type === 'CONSUMO_CULTIVO') {
             qtyToProcess = -Math.abs(qtyToProcess);
+
+            // Validate sufficient stock before processing
+            const stockCheck = await prisma.$queryRawUnsafe<any[]>(`
+                SELECT quantity FROM public.inventory_item
+                WHERE item_id = $1::bigint AND organization_id = $2::uuid AND deleted_at IS NULL
+            `, parseInt(req.params.id), orgId);
+
+            if (!stockCheck.length) {
+                return res.status(404).json({ error: 'Ítem no encontrado' });
+            }
+
+            const currentStock = parseFloat(stockCheck[0].quantity);
+            if (currentStock + qtyToProcess < 0) {
+                return res.status(400).json({
+                    error: `Stock insuficiente. Stock actual: ${currentStock}, cantidad solicitada: ${Math.abs(qtyToProcess)}`
+                });
+            }
         }
 
         await prisma.$executeRawUnsafe(`
